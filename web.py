@@ -1,16 +1,15 @@
-from flask import Flask
-from config import PORT
-import threading
+from aiohttp import web
+import os
 
-app = Flask(__name__)
+async def handle(request):
+    return web.Response(text="Render Rename Bot Running")
 
-@app.route("/")
-def home():
-    return "Rename Bot Running"
+async def start_web():
+    app = web.Application()
+    app.router.add_get("/", handle)
 
-def run():
-    app.run(host="0.0.0.0", port=PORT)
+    runner = web.AppRunner(app)
+    await runner.setup()
 
-def start():
-    t = threading.Thread(target=run)
-    t.start()
+    site = web.TCPSite(runner, "0.0.0.0", int(os.getenv("PORT", 8080)))
+    await site.start()
