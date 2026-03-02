@@ -1,0 +1,1 @@
+# render-rename-bot
