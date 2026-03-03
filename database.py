@@ -1,45 +1,43 @@
 import sqlite3
 
-conn = sqlite3.connect("users.db", check_same_thread=False)
-db = conn.cursor()
+conn = sqlite3.connect("bot.db", check_same_thread=False)
+cur = conn.cursor()
 
-db.execute("""
-CREATE TABLE IF NOT EXISTS users(
+cur.execute("""CREATE TABLE IF NOT EXISTS users(
     user_id INTEGER PRIMARY KEY,
     caption TEXT,
     thumb TEXT,
-    media_type TEXT
-)
-""")
+    media TEXT DEFAULT 'document'
+)""")
 conn.commit()
 
-def add_user(user_id):
-    db.execute("INSERT OR IGNORE INTO users(user_id) VALUES(?)", (user_id,))
+def add_user(uid):
+    cur.execute("INSERT OR IGNORE INTO users(user_id) VALUES(?)", (uid,))
     conn.commit()
 
-def set_caption(user_id, caption):
-    db.execute("UPDATE users SET caption=? WHERE user_id=?", (caption, user_id))
+def set_caption(uid, text):
+    cur.execute("UPDATE users SET caption=? WHERE user_id=?", (text, uid))
     conn.commit()
 
-def get_caption(user_id):
-    db.execute("SELECT caption FROM users WHERE user_id=?", (user_id,))
-    r = db.fetchone()
-    return r[0] if r else None
+def get_caption(uid):
+    cur.execute("SELECT caption FROM users WHERE user_id=?", (uid,))
+    data = cur.fetchone()
+    return data[0] if data and data[0] else None
 
-def set_thumb(user_id, path):
-    db.execute("UPDATE users SET thumb=? WHERE user_id=?", (path, user_id))
+def set_thumb(uid, path):
+    cur.execute("UPDATE users SET thumb=? WHERE user_id=?", (path, uid))
     conn.commit()
 
-def get_thumb(user_id):
-    db.execute("SELECT thumb FROM users WHERE user_id=?", (user_id,))
-    r = db.fetchone()
-    return r[0] if r else None
+def get_thumb(uid):
+    cur.execute("SELECT thumb FROM users WHERE user_id=?", (uid,))
+    data = cur.fetchone()
+    return data[0] if data and data[0] else None
 
-def set_media(user_id, mtype):
-    db.execute("UPDATE users SET media_type=? WHERE user_id=?", (mtype, user_id))
+def set_media(uid, m):
+    cur.execute("UPDATE users SET media=? WHERE user_id=?", (m, uid))
     conn.commit()
 
-def get_media(user_id):
-    db.execute("SELECT media_type FROM users WHERE user_id=?", (user_id,))
-    r = db.fetchone()
-    return r[0] if r else "file"
+def get_media(uid):
+    cur.execute("SELECT media FROM users WHERE user_id=?", (uid,))
+    data = cur.fetchone()
+    return data[0] if data else "document"
