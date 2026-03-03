@@ -1,6 +1,6 @@
 import asyncio
 
-# 🔥 Python 3.14 event loop fix (MUST be before pyrogram import)
+# Python 3.14 event loop fix
 try:
     asyncio.get_event_loop()
 except RuntimeError:
@@ -28,7 +28,7 @@ Encoded by : @Anime_UpdatesAU
 
 bot = Client(
     "render-rename-bot",
-    api_id=API_ID,
+    api_id=int(API_ID),
     api_hash=API_HASH,
     bot_token=BOT_TOKEN
 )
@@ -71,48 +71,43 @@ async def start_cmd(client, message):
 
     add_user(message.from_user.id)
 
-    kb = InlineKeyboardMarkup([
+    keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("SET CAPTION", callback_data="setcap"),
          InlineKeyboardButton("SET THUMB", callback_data="setthumb")],
         [InlineKeyboardButton("SET MEDIA", callback_data="setmedia")],
         [InlineKeyboardButton("METADATA", callback_data="metadata")]
     ])
 
-    await message.reply("RENDER RENAME BOT", reply_markup=kb)
+    await message.reply("RENDER RENAME BOT", reply_markup=keyboard)
 
 # ---------------- CALLBACKS ---------------- #
 
-@bot.on_callback_query(filters.regex("metadata"))
-async def meta_cb(c, q):
-    await q.answer()
-    await q.message.reply(METADATA_TEXT)
+@bot.on_callback_query()
+async def callbacks(client, query):
+    data = query.data
+    await query.answer()
 
-@bot.on_callback_query(filters.regex("setmedia"))
-async def setmedia_cb(c, q):
-    await q.answer()
-    kb = InlineKeyboardMarkup([
-        [InlineKeyboardButton("VIDEO", callback_data="m_video"),
-         InlineKeyboardButton("AUDIO", callback_data="m_audio")],
-        [InlineKeyboardButton("FILE", callback_data="m_document")]
-    ])
-    await q.message.reply("Select Media Type", reply_markup=kb)
+    if data == "metadata":
+        await query.message.reply(METADATA_TEXT)
 
-@bot.on_callback_query(filters.regex("m_"))
-async def media_cb(c, q):
-    await q.answer()
-    m = q.data.split("_")[1]
-    set_media(q.from_user.id, m)
-    await q.message.reply(f"Media set to: {m.upper()}")
+    elif data == "setcap":
+        await query.message.reply("Send caption text")
 
-@bot.on_callback_query(filters.regex("setcap"))
-async def cap_cb(c, q):
-    await q.answer()
-    await q.message.reply("Send caption text")
+    elif data == "setthumb":
+        await query.message.reply("Send photo for thumbnail")
 
-@bot.on_callback_query(filters.regex("setthumb"))
-async def thumb_cb(c, q):
-    await q.answer()
-    await q.message.reply("Send photo for thumbnail")
+    elif data == "setmedia":
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("VIDEO", callback_data="m_video"),
+             InlineKeyboardButton("AUDIO", callback_data="m_audio")],
+            [InlineKeyboardButton("FILE", callback_data="m_document")]
+        ])
+        await query.message.reply("Select Media Type", reply_markup=keyboard)
+
+    elif data.startswith("m_"):
+        media_type = data.split("_")[1]
+        set_media(query.from_user.id, media_type)
+        await query.message.reply(f"Media set to: {media_type.upper()}")
 
 # ---------------- SAVE CAPTION ---------------- #
 
@@ -129,7 +124,6 @@ async def save_caption(client, message):
 async def save_thumb(client, message):
     if not await force_join(client, message):
         return
-
     path = f"thumbnails/{message.from_user.id}.jpg"
     await message.download(path)
     set_thumb(message.from_user.id, path)
@@ -138,7 +132,7 @@ async def save_thumb(client, message):
 # ---------------- RENAME ---------------- #
 
 @bot.on_message(filters.document | filters.video | filters.audio)
-async def rename(client, message):
+async def rename_file(client, message):
     if not await force_join(client, message):
         return
 
@@ -154,40 +148,18 @@ async def rename(client, message):
         progress_args=(msg, start)
     )
 
-    cap = get_caption(user_id)
+    caption = get_caption(user_id) or METADATA_TEXT
     thumb = get_thumb(user_id)
     media = get_media(user_id)
 
-    caption = cap if cap else METADATA_TEXT
     upload_msg = await message.reply("Uploading...")
 
     if media == "video":
-        await client.send_video(
-            message.chat.id,
-            file_path,
-            caption=caption,
-            thumb=thumb,
-            progress=progress,
-            progress_args=(upload_msg, time.time())
-        )
+        await client.send_video(message.chat.id, file_path, caption=caption, thumb=thumb)
     elif media == "audio":
-        await client.send_audio(
-            message.chat.id,
-            file_path,
-            caption=caption,
-            thumb=thumb,
-            progress=progress,
-            progress_args=(upload_msg, time.time())
-        )
+        await client.send_audio(message.chat.id, file_path, caption=caption, thumb=thumb)
     else:
-        await client.send_document(
-            message.chat.id,
-            file_path,
-            caption=caption,
-            thumb=thumb,
-            progress=progress,
-            progress_args=(upload_msg, time.time())
-        )
+        await client.send_document(message.chat.id, file_path, caption=caption, thumb=thumb)
 
     os.remove(file_path)
     await msg.delete()
@@ -196,5 +168,5 @@ async def rename(client, message):
 # ---------------- RUN ---------------- #
 
 if __name__ == "__main__":
-    print("Starting Bot...")
+    print("Bot is starting...")
     bot.run()
