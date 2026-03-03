@@ -1,5 +1,5 @@
 from aiohttp import web
-import os
+from config import PORT
 
 async def handle(request):
     return web.Response(text="Render Rename Bot Running")
@@ -11,5 +11,5 @@ async def start_web():
     runner = web.AppRunner(app)
     await runner.setup()
 
-    site = web.TCPSite(runner, "0.0.0.0", int(os.getenv("PORT", 8080)))
+    site = web.TCPSite(runner, "0.0.0.0", PORT)
     await site.start()
