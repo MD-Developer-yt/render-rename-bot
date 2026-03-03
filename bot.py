@@ -10,7 +10,8 @@ from config import API_ID, API_HASH, BOT_TOKEN, OWNER_ID, PORT
 import database as db
 from web import start_web
 
-# ---------------- BOT SETUP ---------------- #
+# ---------------- BOT SETUP ----------------
+
 bot = Client(
     "rename-render-bot",
     api_id=API_ID,
@@ -20,14 +21,7 @@ bot = Client(
 
 MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024  # 2GB
 
-PROGRESS_BAR = """\n
-<b>🔗 Size :</b> {1} | {2}
-<b>⏳ Done :</b> {0}%
-<b>🚀 Speed :</b> {3}/s
-<b>⏰ ETA :</b> {4}
-"""
-
-# ---------------- HELPER: PROGRESS ---------------- #
+# ---------------- HELPER: PROGRESS ----------------
 async def progress(current, total, message, start_time, action="Processing"):
     now = time.time()
     diff = now - start_time
@@ -36,19 +30,26 @@ async def progress(current, total, message, start_time, action="Processing"):
     percentage = current * 100 / total
     speed = current / diff
     eta = round((total - current) / speed) if speed > 0 else 0
-    bar_text = PROGRESS_BAR.format(
-        f"{percentage:.2f}",
-        f"{current / 1024 / 1024:.2f}MB",
-        f"{total / 1024 / 1024:.2f}MB",
-        f"{speed / 1024 / 1024:.2f}MB",
-        eta
-    )
+
+    # Progress bar using ⬢ for done and ⬡ for remaining
+    bar_length = 20
+    filled_length = int(bar_length * current // total)
+    bar = "⬢" * filled_length + "⬡" * (bar_length - filled_length)
+
+    bar_text = f"""
+<b>{action}</b>
+{bar} {percentage:.2f}%
+<b>🔗 Size :</b> {current / 1024 / 1024:.2f}MB | {total / 1024 / 1024:.2f}MB
+<b>🚀 Speed :</b> {speed / 1024 / 1024:.2f}MB/s
+<b>⏰ ETA :</b> {eta}s
+"""
     try:
         await message.edit(bar_text)
     except:
         pass
 
-# ---------------- START COMMAND ---------------- #
+# ---------------- START COMMAND ----------------
+
 @bot.on_message(filters.command("start") & filters.private)
 async def start_cmd(client, message):
     db.add_user(message.from_user.id)
@@ -77,7 +78,8 @@ async def start_cmd(client, message):
         reply_markup=buttons
     )
 
-# ---------------- CALLBACKS ---------------- #
+# ---------------- CALLBACKS ----------------
+
 @bot.on_callback_query()
 async def cb_handler(client, query):
     data = query.data
@@ -107,7 +109,8 @@ async def cb_handler(client, query):
             ])
         )
 
-# ---------------- CAPTION ---------------- #
+# ---------------- CAPTION ----------------
+
 @bot.on_message(filters.command("setcaption") & filters.private)
 async def set_caption_cmd(client, message):
     text = " ".join(message.text.split()[1:])
@@ -124,7 +127,8 @@ async def remove_caption_cmd(client, message):
     db.set_caption(message.from_user.id, None)
     await message.reply("✅ Caption removed")
 
-# ---------------- THUMBNAIL ---------------- #
+# ---------------- THUMBNAIL ----------------
+
 @bot.on_message(filters.command("setthumbnail") & filters.private)
 async def set_thumb_cmd(client, message):
     if message.reply_to_message and message.reply_to_message.photo:
@@ -148,7 +152,8 @@ async def remove_thumb_cmd(client, message):
     db.set_thumb(message.from_user.id, None)
     await message.reply("✅ Thumbnail removed")
 
-# ---------------- METADATA ---------------- #
+# ---------------- METADATA ----------------
+
 @bot.on_message(filters.command("setmetadata") & filters.private)
 async def set_metadata_cmd(client, message):
     uid = message.from_user.id
@@ -174,7 +179,8 @@ async def meta_toggle_cmd(client, message):
     else:
         await message.reply("Usage: /meta on or /meta off")
 
-# ---------------- MEDIA ---------------- #
+# ---------------- MEDIA ----------------
+
 @bot.on_message(filters.command("setmedia") & filters.private)
 async def set_media_cmd(client, message):
     if len(message.text.split()) < 2:
@@ -185,7 +191,8 @@ async def set_media_cmd(client, message):
     db.set_media(message.from_user.id, mode)
     await message.reply(f"✅ Media set to {mode}")
 
-# ---------------- FILE HANDLER ---------------- #
+# ---------------- FILE HANDLER ----------------
+
 @bot.on_message(filters.video | filters.document | filters.audio)
 async def handle_file(client, message):
     uid = message.from_user.id
@@ -193,8 +200,8 @@ async def handle_file(client, message):
     if media.file_size > MAX_FILE_SIZE:
         return await message.reply("❌ File exceeds 2GB limit")
 
-    status = await message.reply("📥 Starting download...")
-    start_time = time.time()
+    status = await message.reply("📥 Starting download...")  
+    start_time = time.time()  
 
     file_path = await message.download(
         file_name=f"{uid}_{int(time.time())}",
@@ -202,7 +209,7 @@ async def handle_file(client, message):
         progress_args=(status, start_time, "📥 Downloading...")
     )
 
-    meta_enabled = db.get_metadata(uid) != "{}"
+    meta_enabled = db.get_metadata(uid) != "{}"  
     metadata = db.get_metadata(uid)
 
     if metadata and meta_enabled:
@@ -255,7 +262,8 @@ async def handle_file(client, message):
     os.remove(file_path)
     await status.delete()
 
-# ---------------- RUN ---------------- #
+# ---------------- RUN ----------------
+
 if __name__ == "__main__":
     # Start web server for Render
     threading.Thread(target=lambda: asyncio.run(start_web())).start()
