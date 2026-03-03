@@ -1,28 +1,21 @@
 import asyncio
+import os
+import time
+from aiohttp import web
+from pyrogram import Client, filters
+from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from config import *
 
-# Python 3.14 event loop fix
+# Python 3.14 loop fix
 try:
     asyncio.get_event_loop()
 except RuntimeError:
     asyncio.set_event_loop(asyncio.new_event_loop())
 
-import os
-import time
-from pyrogram import Client, filters
-from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from config import *
-from database import *
-
 os.makedirs("downloads", exist_ok=True)
-os.makedirs("thumbnails", exist_ok=True)
 
 METADATA_TEXT = """
 Title : @Anime_UpdatesAU
-Author : @Anime_UpdatesAU
-Artist : @Anime_UpdatesAU
-Audio : @Anime_UpdatesAU
-Video : @Anime_UpdatesAU
-Subtitle : @Anime_UpdatesAU
 Encoded by : @Anime_UpdatesAU
 """
 
@@ -33,14 +26,19 @@ bot = Client(
     bot_token=BOT_TOKEN
 )
 
-# ---------------- FORCE JOIN ---------------- #
+# ---------------- FORCE JOIN WITH OWNER BYPASS ---------------- #
 
 async def force_join(client, message):
+
+    if message.from_user.id == OWNER_ID:
+        return True
+
     if not FORCE_JOIN:
         return True
+
     try:
-        user = await client.get_chat_member(FORCE_JOIN, message.from_user.id)
-        if user.status in ["left", "kicked"]:
+        member = await client.get_chat_member(FORCE_JOIN, message.from_user.id)
+        if member.status in ["left", "kicked"]:
             await message.reply(f"Join @{FORCE_JOIN} first")
             return False
         return True
@@ -48,125 +46,70 @@ async def force_join(client, message):
         await message.reply(f"Join @{FORCE_JOIN} first")
         return False
 
-# ---------------- PROGRESS ---------------- #
 
-def progress(current, total, msg, start):
-    now = time.time()
-    if int(now - start) % 4 == 0:
-        percent = current * 100 / total
-        bar = "█" * int(percent / 5) + "░" * (20 - int(percent / 5))
-        try:
-            asyncio.create_task(
-                msg.edit(f"Processing...\n{bar}\n{percent:.2f}%")
-            )
-        except:
-            pass
-
-# ---------------- START ---------------- #
+# ---------------- START COMMAND ---------------- #
 
 @bot.on_message(filters.command("start") & filters.private)
 async def start_cmd(client, message):
+
     if not await force_join(client, message):
         return
-
-    add_user(message.from_user.id)
 
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("SET CAPTION", callback_data="setcap"),
-         InlineKeyboardButton("SET THUMB", callback_data="setthumb")],
-        [InlineKeyboardButton("SET MEDIA", callback_data="setmedia")],
-        [InlineKeyboardButton("METADATA", callback_data="metadata")]
+        [InlineKeyboardButton("METADATA", callback_data="meta")]
     ])
 
-    await message.reply("RENDER RENAME BOT", reply_markup=keyboard)
+    await message.reply("RENDER RENAME BOT WORKING", reply_markup=keyboard)
 
-# ---------------- CALLBACKS ---------------- #
-
-@bot.on_callback_query()
-async def callbacks(client, query):
-    data = query.data
-    await query.answer()
-
-    if data == "metadata":
-        await query.message.reply(METADATA_TEXT)
-
-    elif data == "setcap":
-        await query.message.reply("Send caption text")
-
-    elif data == "setthumb":
-        await query.message.reply("Send photo for thumbnail")
-
-    elif data == "setmedia":
-        keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("VIDEO", callback_data="m_video"),
-             InlineKeyboardButton("AUDIO", callback_data="m_audio")],
-            [InlineKeyboardButton("FILE", callback_data="m_document")]
-        ])
-        await query.message.reply("Select Media Type", reply_markup=keyboard)
-
-    elif data.startswith("m_"):
-        media_type = data.split("_")[1]
-        set_media(query.from_user.id, media_type)
-        await query.message.reply(f"Media set to: {media_type.upper()}")
-
-# ---------------- SAVE CAPTION ---------------- #
-
-@bot.on_message(filters.text & filters.private)
-async def save_caption(client, message):
-    if not await force_join(client, message):
-        return
-    set_caption(message.from_user.id, message.text)
-    await message.reply("Caption Saved")
-
-# ---------------- SAVE THUMB ---------------- #
-
-@bot.on_message(filters.photo & filters.private)
-async def save_thumb(client, message):
-    if not await force_join(client, message):
-        return
-    path = f"thumbnails/{message.from_user.id}.jpg"
-    await message.download(path)
-    set_thumb(message.from_user.id, path)
-    await message.reply("Thumbnail Saved")
 
 # ---------------- RENAME ---------------- #
 
 @bot.on_message(filters.document | filters.video | filters.audio)
 async def rename_file(client, message):
+
     if not await force_join(client, message):
         return
 
-    user_id = message.from_user.id
-    add_user(user_id)
-
     msg = await message.reply("Downloading...")
-    start = time.time()
+    file_path = await message.download(file_name=f"downloads/{message.id}")
 
-    file_path = await message.download(
-        file_name=f"downloads/{message.id}",
-        progress=progress,
-        progress_args=(msg, start)
+    await message.reply("Uploading...")
+
+    await client.send_document(
+        message.chat.id,
+        file_path,
+        caption=METADATA_TEXT
     )
-
-    caption = get_caption(user_id) or METADATA_TEXT
-    thumb = get_thumb(user_id)
-    media = get_media(user_id)
-
-    upload_msg = await message.reply("Uploading...")
-
-    if media == "video":
-        await client.send_video(message.chat.id, file_path, caption=caption, thumb=thumb)
-    elif media == "audio":
-        await client.send_audio(message.chat.id, file_path, caption=caption, thumb=thumb)
-    else:
-        await client.send_document(message.chat.id, file_path, caption=caption, thumb=thumb)
 
     os.remove(file_path)
     await msg.delete()
-    await upload_msg.delete()
 
-# ---------------- RUN ---------------- #
+
+# ---------------- WEB SERVER (PORT 8080) ---------------- #
+
+async def handle(request):
+    return web.Response(text="Bot is running!")
+
+async def start_web():
+    app = web.Application()
+    app.router.add_get("/", handle)
+
+    port = int(os.environ.get("PORT", 8080))
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    print(f"Web server started on port {port}")
+
+
+# ---------------- MAIN ---------------- #
+
+async def main():
+    await bot.start()
+    print("Telegram Bot Started")
+    await start_web()
+    await asyncio.Event().wait()
+
 
 if __name__ == "__main__":
-    print("Bot is starting...")
-    bot.run()
+    asyncio.run(main())
