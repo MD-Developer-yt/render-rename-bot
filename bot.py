@@ -1,4 +1,3 @@
-
 import os
 import asyncio
 from aiohttp import web
@@ -19,7 +18,6 @@ bot = Client(
 
 async def force_join(client, message):
 
-    # Owner bypass
     if message.from_user.id == OWNER_ID:
         return True
 
@@ -37,8 +35,7 @@ async def force_join(client, message):
 
     except Exception as e:
         print("Force Join Error:", e)
-        await message.reply(f"Join @{FORCE_JOIN} first")
-        return False
+        return True
 
 
 # ---------------- START COMMAND ---------------- #
@@ -49,17 +46,13 @@ async def start_cmd(client, message):
     if not await force_join(client, message):
         return
 
-    keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("Bot Status", callback_data="status")]
-    ])
-
-    await message.reply("✅ RENDER RENAME BOT IS WORKING", reply_markup=keyboard)
+    await message.reply("✅ Bot is working properly")
 
 
-# ---------------- RENAME HANDLER ---------------- #
+# ---------------- FILE HANDLER ---------------- #
 
 @bot.on_message(filters.document | filters.video | filters.audio)
-async def rename_file(client, message):
+async def handle_file(client, message):
 
     if not await force_join(client, message):
         return
@@ -79,14 +72,14 @@ async def rename_file(client, message):
     await msg.delete()
 
 
-# ---------------- WEB SERVER (PORT 8080) ---------------- #
+# ---------------- WEB SERVER ---------------- #
 
-async def handle(request):
-    return web.Response(text="Bot is running successfully!")
+async def web_handler(request):
+    return web.Response(text="Bot is running!")
 
 async def start_web_server():
     app = web.Application()
-    app.router.add_get("/", handle)
+    app.router.add_get("/", web_handler)
 
     port = int(os.environ.get("PORT", 8080))
 
@@ -99,7 +92,7 @@ async def start_web_server():
     print(f"Web server started on port {port}")
 
 
-# ---------------- MAIN ---------------- #
+# ---------------- START EVERYTHING ---------------- #
 
 async def main():
     await bot.start()
@@ -109,4 +102,6 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    loop = asyncio.get_event_loop()
+    loop.create_task(main())
+    loop.run_forever()
