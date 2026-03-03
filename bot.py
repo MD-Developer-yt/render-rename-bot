@@ -106,13 +106,21 @@ async def cb_handler(client, query):
         )
     elif data == "about":
         await query.message.edit_text(
-            text=f"🤖 Bot: 2GB Rename Bot\n👨‍💻 Developer: @{OWNER_ID}\n📌 Purpose: Rename and process files up to 2GB",
+            text=f"╭───────────────⍟
+                   ├<b>🤖 My Name</b> : <a href=https://t.me/AU_Render_Rename_bot>AU Rename bot</a> 
+                   ├<b>🖥️ Developer</b> : <a href=https://t.me/Mr_Mohammed_29>ᴍᴏʜᴀᴍᴍᴇᴅ</a> 
+                   ├<b>👨‍💻 Updates</b> : <a href=https://t.me/Anime_UpdatesAU>Aɴɪᴍᴇ Uᴘᴅᴀᴛᴇꜱ</a>
+                   ├<b>📕 Library</b> : <a href=https://github.com/pyrogram>Pyrogram</a>
+                   ├<b>✏️ Language</b> : <a href=https://www.python.org>Python 3</a>
+                   ├<b>💾 Database</b> : <a href=https://cloud.mongodb.com>Mongo DB</a>
+                   ├<b>📊 Build Version</b> : <a href=https://t.me/BotsServerDead>Bots Server</a> 
+                   ╰───────────────⍟",
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("🏠 Home", callback_data="start")]
             ])
         )
 
-# ---------------- CAPTION ----------------
+# ---------------- CAPTION -----------------
 
 @bot.on_message(filters.command("setcaption") & filters.private)
 async def set_caption_cmd(client, message):
