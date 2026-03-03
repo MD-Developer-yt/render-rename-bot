@@ -1,35 +1,32 @@
+
+# ---------------- PYTHON 3.14 FIX ---------------- #
 import asyncio
+
+loop = asyncio.new_event_loop()
+asyncio.set_event_loop(loop)
+
+# ------------------------------------------------- #
+
 import os
-import time
 from aiohttp import web
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from config import *
 
-# Python 3.14 loop fix
-try:
-    asyncio.get_event_loop()
-except RuntimeError:
-    asyncio.set_event_loop(asyncio.new_event_loop())
-
-os.makedirs("downloads", exist_ok=True)
-
-METADATA_TEXT = """
-Title : @Anime_UpdatesAU
-Encoded by : @Anime_UpdatesAU
-"""
+# ---------------- BOT SETUP ---------------- #
 
 bot = Client(
     "render-rename-bot",
-    api_id=int(API_ID),
+    api_id=API_ID,
     api_hash=API_HASH,
     bot_token=BOT_TOKEN
 )
 
-# ---------------- FORCE JOIN WITH OWNER BYPASS ---------------- #
+# ---------------- FORCE JOIN ---------------- #
 
 async def force_join(client, message):
 
+    # Owner bypass
     if message.from_user.id == OWNER_ID:
         return True
 
@@ -38,11 +35,15 @@ async def force_join(client, message):
 
     try:
         member = await client.get_chat_member(FORCE_JOIN, message.from_user.id)
+
         if member.status in ["left", "kicked"]:
             await message.reply(f"Join @{FORCE_JOIN} first")
             return False
+
         return True
-    except:
+
+    except Exception as e:
+        print("Force Join Error:", e)
         await message.reply(f"Join @{FORCE_JOIN} first")
         return False
 
@@ -59,7 +60,7 @@ async def start_cmd(client, message):
         [InlineKeyboardButton("METADATA", callback_data="meta")]
     ])
 
-    await message.reply("RENDER RENAME BOT WORKING", reply_markup=keyboard)
+    await message.reply("RENDER RENAME BOT IS WORKING", reply_markup=keyboard)
 
 
 # ---------------- RENAME ---------------- #
@@ -71,14 +72,14 @@ async def rename_file(client, message):
         return
 
     msg = await message.reply("Downloading...")
-    file_path = await message.download(file_name=f"downloads/{message.id}")
+    file_path = await message.download()
 
     await message.reply("Uploading...")
 
     await client.send_document(
         message.chat.id,
         file_path,
-        caption=METADATA_TEXT
+        caption="Encoded by @Anime_UpdatesAU"
     )
 
     os.remove(file_path)
@@ -95,10 +96,13 @@ async def start_web():
     app.router.add_get("/", handle)
 
     port = int(os.environ.get("PORT", 8080))
+
     runner = web.AppRunner(app)
     await runner.setup()
+
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
+
     print(f"Web server started on port {port}")
 
 
