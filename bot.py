@@ -1,19 +1,16 @@
-import os
-import time
-import asyncio
-import threading
-import subprocess
+import os, time, asyncio, threading, subprocess
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-import database as db
-import sys
+from database import *
+from config import *
 
-# ---------------- BOT CONFIG ---------------- #
-API_ID = int(os.environ.get("API_ID"))
-API_HASH = os.environ.get("API_HASH")
-BOT_TOKEN = os.environ.get("BOT_TOKEN")
-OWNER_ID = int(os.environ.get("OWNER_ID", 123456789))  # Set your Telegram user ID
+# ---------------- DIRECTORIES ---------------- #
+os.makedirs("downloads", exist_ok=True)
+os.makedirs("thumbnails", exist_ok=True)
 
+MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024  # 2GB limit
+
+# ---------------- BOT ---------------- #
 bot = Client(
     "rename-render-bot",
     api_id=API_ID,
@@ -21,213 +18,183 @@ bot = Client(
     bot_token=BOT_TOKEN
 )
 
-MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024  # 2GB
-os.makedirs("downloads", exist_ok=True)
-os.makedirs("thumbnails", exist_ok=True)
-
-START_TIME = time.time()
-
 # ---------------- PROGRESS BAR ---------------- #
-async def progress(current, total, message, start_time, action):
+async def progress(current, total, msg, start, action="Processing"):
     now = time.time()
-    diff = now - start_time
+    diff = now - start
     if diff == 0:
         return
-    percentage = current * 100 / total
+    percent = current * 100 / total
     speed = current / diff
     eta = round((total - current) / speed) if speed > 0 else 0
-    bar = "█" * int(percentage / 5) + "░" * (20 - int(percentage / 5))
-    text = f"{action}\n[{bar}] {percentage:.2f}%\nSpeed: {speed/1024/1024:.2f} MB/s\nETA: {eta}s"
+    bar = "█" * int(percent / 5) + "░" * (20 - int(percent / 5))
     try:
-        await message.edit(text)
+        await msg.edit(f"{action}\n[{bar}] {percent:.2f}%\nSpeed: {speed/1024/1024:.2f} MB/s\nETA: {eta}s")
     except:
         pass
 
-# ---------------- START COMMAND ---------------- #
-@bot.on_message(filters.private & filters.command("start"))
+# ---------------- START ---------------- #
+@bot.on_message(filters.command("start") & filters.private)
 async def start_cmd(client, message):
-    db.add_user(message.from_user.id)
+    add_user(message.from_user.id)
     kb = InlineKeyboardMarkup([
-        [InlineKeyboardButton("📢 Anime Updates", url="https://t.me/Anime_UpdatesAU"),
+        [InlineKeyboardButton("📯 Anime Updates", url="https://t.me/Anime_UpdatesAU"),
          InlineKeyboardButton("💬 Support", url="https://t.me/AU_Bot_Discussion")],
-        [InlineKeyboardButton("🎛 About", callback_data="about"),
+        [InlineKeyboardButton("🎛️ About", callback_data="about"),
          InlineKeyboardButton("🛠 Help", callback_data="help")]
     ])
-    photo_url = "https://graph.org/file/0e77ba48a8b7a3b09296f-362372bee0d84fd217.jpg"
-    await message.reply_photo(photo=photo_url, caption="👋 Welcome to 2GB Rename Bot!", reply_markup=kb)
+    text = f"👋 Hello {message.from_user.first_name}!\n\nWelcome to 2GB Rename Bot.\nSend any file (Video/Audio/Document) to rename it."
+    photo = "https://graph.org/file/0e77ba48a8b7a3b09296f-362372bee0d84fd217.jpg"
+    await message.reply_photo(photo=photo, caption=text, reply_markup=kb)
 
 # ---------------- CALLBACKS ---------------- #
-@bot.on_callback_query()
-async def cb_handler(client, query):
-    data = query.data
-    if data == "help":
-        await query.message.edit_text(
-            text="/setcaption\n/removecaption\n/seecaption\n/setthumbnail\n/removethumbnail\n/viewthumbnail\n/setmetadata\n/meta on/off\n/setmedia video|audio|document",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("« Back", callback_data="start")]
-            ])
-        )
-    elif data == "about":
-        await query.message.edit_text(
-            text="Developer: @Mr_Mohammed_29\nBot: 2GB Rename Bot\nFeatures: Rename, Metadata, Set Media, Thumbnail, Broadcast",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("« Back", callback_data="start")]
-            ])
-        )
+@bot.on_callback_query(filters.regex("help"))
+async def help_cb(c, q):
+    txt = (
+        "📖 Commands:\n\n"
+        "/setcaption - Set caption\n"
+        "/removecaption - Remove caption\n"
+        "/seecaption - See saved caption\n"
+        "/setthumbnail - Set thumbnail\n"
+        "/removethumbnail - Remove thumbnail\n"
+        "/viewthumbnail - View thumbnail\n"
+        "/setmetadata - Set metadata (Title, Author, Artist, Video, Audio, Subtitle, Encoded by)\n"
+        "/setmedia - Set media type (video/audio/document)\n"
+        "/meta on/off - Enable/Disable metadata\n"
+        "/restart - Restart bot\n"
+        "/status - Bot status\n"
+        "/users - Total users\n"
+        "/broadcast - Send message to all users\n"
+        "/ping - Check bot speed\n"
+        "/info - Bot info\n"
+    )
+    await q.message.edit(txt)
 
-# ---------------- CAPTION ---------------- #
+@bot.on_callback_query(filters.regex("about"))
+async def about_cb(c, q):
+    txt = (
+        "🤖 Bot Name: 2GB Rename Bot\n"
+        "👨‍💻 Developer: @Mr_Mohammed_29\n"
+        "📚 Features: Rename files, add caption, thumbnail, metadata, 2GB support, progress bar\n"
+    )
+    await q.message.edit(txt)
+
+# ---------------- SET CAPTION ---------------- #
 @bot.on_message(filters.command("setcaption") & filters.private)
-async def set_caption(client, message):
-    if len(message.command) < 2:
-        return await message.reply("Usage: /setcaption Your caption text")
-    db.set_caption(message.from_user.id, message.text.split(None,1)[1])
-    await message.reply("✅ Caption Saved")
+async def set_caption_cmd(c, m):
+    await m.reply("Send me the caption text:")
+    @bot.on_message(filters.text & filters.private)
+    async def save_caption(c2, m2):
+        set_caption(m2.from_user.id, m2.text)
+        await m2.reply("✅ Caption saved.")
 
 @bot.on_message(filters.command("seecaption") & filters.private)
-async def see_caption(client, message):
-    cap = db.get_caption(message.from_user.id)
-    await message.reply(f"📄 Caption:\n{cap}" if cap else "No caption set")
+async def see_caption(c, m):
+    cap = get_caption(m.from_user.id)
+    await m.reply(f"📄 Saved Caption:\n{cap if cap else 'No caption set.'}")
 
 @bot.on_message(filters.command("removecaption") & filters.private)
-async def remove_caption(client, message):
-    db.remove_caption(message.from_user.id)
-    await message.reply("✅ Caption Removed")
+async def remove_caption(c, m):
+    set_caption(m.from_user.id, None)
+    await m.reply("🗑 Caption removed.")
 
-# ---------------- THUMBNAIL ---------------- #
+# ---------------- SET THUMBNAIL ---------------- #
 @bot.on_message(filters.command("setthumbnail") & filters.private)
-async def set_thumb(client, message):
-    if not message.reply_to_message or not message.reply_to_message.photo:
-        return await message.reply("Reply to a photo with /setthumbnail")
-    path = f"thumbnails/{message.from_user.id}.jpg"
-    await message.reply_to_message.download(path)
-    db.set_thumb(message.from_user.id, path)
-    await message.reply("✅ Thumbnail Saved")
+async def set_thumb_cmd(c, m):
+    await m.reply("Send photo for thumbnail:")
+    @bot.on_message(filters.photo & filters.private)
+    async def save_thumb(c2, m2):
+        path = f"thumbnails/{m2.from_user.id}.jpg"
+        await m2.download(path)
+        set_thumb(m2.from_user.id, path)
+        await m2.reply("✅ Thumbnail saved.")
 
 @bot.on_message(filters.command("viewthumbnail") & filters.private)
-async def view_thumb(client, message):
-    path = db.get_thumb(message.from_user.id)
-    if path and os.path.exists(path):
-        await message.reply_photo(path)
+async def view_thumb(c, m):
+    thumb = get_thumb(m.from_user.id)
+    if thumb:
+        await m.reply_photo(thumb)
     else:
-        await message.reply("No thumbnail set")
+        await m.reply("No thumbnail set.")
 
 @bot.on_message(filters.command("removethumbnail") & filters.private)
-async def remove_thumb(client, message):
-    db.remove_thumb(message.from_user.id)
-    await message.reply("✅ Thumbnail Removed")
+async def remove_thumb(c, m):
+    set_thumb(m.from_user.id, None)
+    await m.reply("🗑 Thumbnail removed.")
 
-# ---------------- MEDIA ---------------- #
-@bot.on_message(filters.command("setmedia") & filters.private)
-async def set_media(client, message):
-    if len(message.command) < 2:
-        return await message.reply("Usage: /setmedia video|audio|document")
-    mode = message.command[1].lower()
-    if mode not in ["video","audio","document"]:
-        return await message.reply("Choose: video|audio|document")
-    db.set_media(message.from_user.id, mode)
-    await message.reply(f"✅ Media set to {mode}")
-
-# ---------------- METADATA ---------------- #
+# ---------------- SET METADATA ---------------- #
 @bot.on_message(filters.command("setmetadata") & filters.private)
-async def set_metadata(client, message):
-    lines = message.text.split("\n")[1:]
-    meta = {}
-    for line in lines:
-        if "=" in line:
-            k,v = line.split("=",1)
-            meta[k.strip().lower()] = v.strip()
-    db.set_metadata(message.from_user.id, meta)
-    await message.reply("✅ Metadata Saved")
+async def set_metadata_cmd(c, m):
+    await m.reply(
+        "Send metadata in format:\nTitle=...\nAuthor=...\nArtist=...\nAudio=...\nVideo=...\nSubtitle=...\nEncoded_by=..."
+    )
 
-@bot.on_message(filters.command("meta") & filters.private)
-async def toggle_meta(client, message):
-    if "on" in message.text.lower():
-        db.toggle_meta(message.from_user.id, True)
-        await message.reply("🟢 Metadata Enabled")
-    elif "off" in message.text.lower():
-        db.toggle_meta(message.from_user.id, False)
-        await message.reply("🔴 Metadata Disabled")
+# ---------------- SET MEDIA ---------------- #
+@bot.on_message(filters.command("setmedia") & filters.private)
+async def set_media_cmd(c, m):
+    args = m.text.split()
+    if len(args) < 2:
+        return await m.reply("Usage: /setmedia video|audio|document")
+    mode = args[1].lower()
+    if mode not in ["video","audio","document"]:
+        return await m.reply("Choose video/audio/document")
+    set_media(m.from_user.id, mode)
+    await m.reply(f"✅ Media mode set to {mode}")
 
 # ---------------- FILE HANDLER ---------------- #
-@bot.on_message(filters.video | filters.document | filters.audio)
-async def handle_file(client, message):
-    user_id = message.from_user.id
-    media = message.video or message.document or message.audio
-    if media.file_size > MAX_FILE_SIZE:
-        return await message.reply("❌ File exceeds 2GB limit")
-    status = await message.reply("📥 Downloading...")
-    start_time = time.time()
-    file_path = await message.download(
-        file_name=f"downloads/{user_id}_{int(time.time())}",
-        progress=progress,
-        progress_args=(status, start_time, "📥 Downloading...")
-    )
-    meta = db.get_metadata(user_id)
-    if meta and meta["meta_enabled"]:
-        await status.edit("🛠 Applying Metadata...")
-        output_path = file_path + "_meta.mp4"
-        cmd = ["ffmpeg","-y","-i",file_path]
-        for key in ["title","audio","author","video","subtitle","artist","encoded_by"]:
-            if meta.get(key):
-                cmd.extend(["-metadata", f"{key}={meta[key]}"])
-        cmd.extend(["-codec","copy",output_path])
-        subprocess.run(cmd)
-        os.remove(file_path)
-        file_path = output_path
-    await status.edit("📤 Uploading...")
-    mode = db.get_media(user_id)
-    if mode == "video":
-        await client.send_video(message.chat.id, file_path, progress=progress, progress_args=(status, time.time(), "📤 Uploading..."))
-    elif mode == "audio":
-        await client.send_audio(message.chat.id, file_path, progress=progress, progress_args=(status, time.time(), "📤 Uploading..."))
+@bot.on_message(filters.document | filters.video | filters.audio)
+async def handle_file(c, m):
+    uid = m.from_user.id
+    add_user(uid)
+    file = m.document or m.video or m.audio
+
+    if file.file_size > MAX_FILE_SIZE:
+        return await m.reply("❌ File exceeds 2GB limit")
+
+    msg = await m.reply("📥 Downloading...")
+    start = time.time()
+    file_path = await m.download(f"downloads/{m.message_id}", progress=progress, progress_args=(msg, start, "📥 Downloading..."))
+
+    media_mode = get_media(uid)
+    caption = get_caption(uid)
+    thumb = get_thumb(uid)
+
+    upload_msg = await m.reply("📤 Uploading...")
+    start2 = time.time()
+
+    if media_mode=="video":
+        await c.send_video(m.chat.id, file_path, caption=caption, thumb=thumb, progress=progress, progress_args=(upload_msg, start2, "📤 Uploading..."))
+    elif media_mode=="audio":
+        await c.send_audio(m.chat.id, file_path, caption=caption, thumb=thumb, progress=progress, progress_args=(upload_msg, start2, "📤 Uploading..."))
     else:
-        await client.send_document(message.chat.id, file_path, progress=progress, progress_args=(status, time.time(), "📤 Uploading..."))
+        await c.send_document(m.chat.id, file_path, caption=caption, thumb=thumb, progress=progress, progress_args=(upload_msg, start2, "📤 Uploading..."))
+
     os.remove(file_path)
-    await status.delete()
+    await msg.delete()
+    await upload_msg.delete()
 
-# ---------------- ADMIN COMMANDS ---------------- #
-def owner_only(func):
-    async def wrapper(client, message):
-        if message.from_user.id != OWNER_ID:
-            return await message.reply("❌ You are not the owner")
-        return await func(client, message)
-    return wrapper
+# ---------------- WEB SERVER (Render Free Plan) ---------------- #
+def run_web():
+    from aiohttp import web
 
-@bot.on_message(filters.command("broadcast") & filters.private)
-@owner_only
-async def broadcast(client, message):
-    text = message.text.split(None,1)
-    if len(text) < 2:
-        return await message.reply("Usage: /broadcast Your message")
-    all_users = db.get_all_users()
-    for uid in all_users:
-        try:
-            await client.send_message(uid, text[1])
-        except:
-            continue
-    await message.reply(f"✅ Broadcast sent to {len(all_users)} users")
+    async def handler(req):
+        return web.Response(text="Bot is running!")
 
-@bot.on_message(filters.command("users") & filters.private)
-@owner_only
-async def users_count(client, message):
-    all_users = db.get_all_users()
-    await message.reply(f"Total Users: {len(all_users)}")
+    async def start():
+        app = web.Application()
+        app.router.add_get("/", handler)
+        runner = web.AppRunner(app)
+        await runner.setup()
+        port = int(os.environ.get("PORT", 8080))
+        site = web.TCPSite(runner, "0.0.0.0", port)
+        await site.start()
 
-@bot.on_message(filters.command("status") & filters.private)
-@owner_only
-async def status(client, message):
-    uptime = time.time() - START_TIME
-    hrs, rem = divmod(int(uptime), 3600)
-    mins, secs = divmod(rem, 60)
-    all_users = db.get_all_users()
-    await message.reply(f"Uptime: {hrs}h {mins}m {secs}s\nTotal Users: {len(all_users)}")
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(start())
+    loop.run_forever()
 
-@bot.on_message(filters.command("restart") & filters.private)
-@owner_only
-async def restart(client, message):
-    await message.reply("♻️ Restarting Bot...")
-    os.execv(sys.executable, ['python3'] + sys.argv)
-
-# ---------------- RUN ---------------- #
-if __name__ == "__main__":
+# ---------------- MAIN ---------------- #
+if __name__=="__main__":
+    threading.Thread(target=run_web).start()
     bot.run()
