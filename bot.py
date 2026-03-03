@@ -55,10 +55,13 @@ async def start_cmd(client, message):
     db.add_user(message.from_user.id)
 
     welcome_text = (
-        f"👋 Hello {message.from_user.first_name}!\n\n"
-        "🤖 Welcome to 2GB Rename Bot\n"
-        "📂 Send video / document / audio\n\n"
-        "Use /help to see all commands."
+        f"👋 Hᴇʟʟᴏ {message.from_user.first_name}!\n\n"
+        "🤖 Wᴇʟᴄᴏᴍᴇ Tᴏ AU Rᴇɴᴅᴇʀ Rᴇɴᴀᴍᴇ Bᴏᴛ\n\n"
+        "• Tʜɪs Is Aɴ Aᴅᴠᴀɴᴄᴇᴅ Aɴᴅ Yᴇᴛ Pᴏᴡᴇʀꜰᴜʟ ɪʟʟᴇɢᴀʟ Rᴇɴᴀᴍᴇ Bᴏᴛ.\n"
+        "• Usɪɴɢ Tʜɪs Bᴏᴛ Yᴏᴜ Cᴀɴ Rᴇɴᴀᴍᴇ & Cʜᴀɴɢᴇ Tʜᴜᴍʙɴᴀɪʟ Oꜰ Yᴏᴜʀ Fɪʟᴇ.\n"
+        "• Yᴏᴜ Cᴀɴ Aʟsᴏ Cᴏɴᴠᴇʀᴛ Vɪᴅᴇᴏ Tᴏ Fɪʟᴇ & Fɪʟᴇ Tᴏ Vɪᴅᴇᴏ.\n"
+        "• Tʜɪs Bᴏᴛ Aʟꜱᴏ Sᴜᴘᴘᴏʀᴛs Cᴜsᴛᴏᴍ Tʜᴜᴍʙɴᴀɪʟ Aɴᴅ Cᴜsᴛᴏᴍ Cᴀᴘᴛɪᴏɴ.\n\n"
+        ☆ Tʜɪs Bᴏᴛ Wᴀs Cʀᴇᴀᴛᴇᴅ Bʏ : <a href=https://t.me/Mr_Mohammed_29>ᴍᴏʜᴀᴍᴍᴇᴅ</a> 
     )
 
     buttons = InlineKeyboardMarkup([
