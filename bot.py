@@ -1,21 +1,20 @@
 import asyncio
 
-# 🔥 FIX for Python 3.13 / 3.14
+# 🔥 Python 3.14 event loop fix (MUST be before pyrogram import)
 try:
     asyncio.get_event_loop()
 except RuntimeError:
     asyncio.set_event_loop(asyncio.new_event_loop())
 
-import os, time
+import os
+import time
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from config import *
 from database import *
-from web import start_web
 
 os.makedirs("downloads", exist_ok=True)
 os.makedirs("thumbnails", exist_ok=True)
-os.makedirs("media", exist_ok=True)
 
 METADATA_TEXT = """
 Title : @Anime_UpdatesAU
@@ -58,7 +57,7 @@ def progress(current, total, msg, start):
         bar = "█" * int(percent / 5) + "░" * (20 - int(percent / 5))
         try:
             asyncio.create_task(
-                msg.edit(f"**Processing**\n{bar}\n{percent:.2f}%")
+                msg.edit(f"Processing...\n{bar}\n{percent:.2f}%")
             )
         except:
             pass
@@ -79,7 +78,7 @@ async def start_cmd(client, message):
         [InlineKeyboardButton("METADATA", callback_data="metadata")]
     ])
 
-    await message.reply("**RENDER RENAME BOT**", reply_markup=kb)
+    await message.reply("RENDER RENAME BOT", reply_markup=kb)
 
 # ---------------- CALLBACKS ---------------- #
 
@@ -115,13 +114,12 @@ async def thumb_cb(c, q):
     await q.answer()
     await q.message.reply("Send photo for thumbnail")
 
-# ---------------- SAVE TEXT ---------------- #
+# ---------------- SAVE CAPTION ---------------- #
 
 @bot.on_message(filters.text & filters.private)
 async def save_caption(client, message):
     if not await force_join(client, message):
         return
-
     set_caption(message.from_user.id, message.text)
     await message.reply("Caption Saved")
 
@@ -195,13 +193,8 @@ async def rename(client, message):
     await msg.delete()
     await upload_msg.delete()
 
-# ---------------- MAIN ---------------- #
-
-async def main():
-    await bot.start()
-    await start_web()
-    print("Bot Started Successfully")
-    await asyncio.Event().wait()
+# ---------------- RUN ---------------- #
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    print("Starting Bot...")
+    bot.run()
