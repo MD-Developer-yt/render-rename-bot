@@ -1,5 +1,5 @@
 import os
-import asyncio
+import threading
 from aiohttp import web
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -28,13 +28,14 @@ async def force_join(client, message):
         member = await client.get_chat_member(FORCE_JOIN, message.from_user.id)
 
         if member.status in ["left", "kicked"]:
-            await message.reply(f"Join @{FORCE_JOIN} first")
+            await message.reply(
+                f"🚫 Please join @{FORCE_JOIN} first to use this bot."
+            )
             return False
 
         return True
 
-    except Exception as e:
-        print("Force Join Error:", e)
+    except:
         return True
 
 
@@ -46,7 +47,27 @@ async def start_cmd(client, message):
     if not await force_join(client, message):
         return
 
-    await message.reply("✅ Bot is working properly")
+    welcome_text = f"""
+👋 Hello {message.from_user.first_name}!
+
+✨ Welcome to RENDER RENAME BOT
+
+📂 Send me any video, audio or document.
+⚡ I will rename and resend it instantly.
+
+🔒 Fast | Simple | Stable
+"""
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("📢 Updates", url=f"https://t.me/{FORCE_JOIN}")
+        ],
+        [
+            InlineKeyboardButton("👤 Owner", url=f"https://t.me/{message.from_user.username}" if message.from_user.username else "https://t.me")
+        ]
+    ])
+
+    await message.reply_text(welcome_text, reply_markup=keyboard)
 
 
 # ---------------- FILE HANDLER ---------------- #
@@ -57,15 +78,15 @@ async def handle_file(client, message):
     if not await force_join(client, message):
         return
 
-    msg = await message.reply("Downloading...")
+    msg = await message.reply("📥 Downloading...")
     file_path = await message.download()
 
-    await message.reply("Uploading...")
+    await message.reply("📤 Uploading...")
 
     await client.send_document(
         message.chat.id,
         file_path,
-        caption="Encoded by @Anime_UpdatesAU"
+        caption="✨ Encoded by @Anime_UpdatesAU"
     )
 
     os.remove(file_path)
@@ -74,34 +95,36 @@ async def handle_file(client, message):
 
 # ---------------- WEB SERVER ---------------- #
 
-async def web_handler(request):
-    return web.Response(text="Bot is running!")
+def run_web():
+    async def handler(request):
+        return web.Response(text="Bot is running!")
 
-async def start_web_server():
-    app = web.Application()
-    app.router.add_get("/", web_handler)
+    async def start():
+        app = web.Application()
+        app.router.add_get("/", handler)
 
-    port = int(os.environ.get("PORT", 8080))
+        port = int(os.environ.get("PORT", 8080))
 
-    runner = web.AppRunner(app)
-    await runner.setup()
+        runner = web.AppRunner(app)
+        await runner.setup()
 
-    site = web.TCPSite(runner, "0.0.0.0", port)
-    await site.start()
+        site = web.TCPSite(runner, "0.0.0.0", port)
+        await site.start()
 
-    print(f"Web server started on port {port}")
+        print(f"Web server started on port {port}")
+
+    import asyncio
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(start())
+    loop.run_forever()
 
 
-# ---------------- START EVERYTHING ---------------- #
-
-async def main():
-    await bot.start()
-    print("Telegram Bot Started")
-    await start_web_server()
-    await asyncio.Event().wait()
-
+# ---------------- MAIN ---------------- #
 
 if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    loop.create_task(main())
-    loop.run_forever()
+    print("Starting Web Server...")
+    threading.Thread(target=run_web).start()
+
+    print("Starting Telegram Bot...")
+    bot.run()
