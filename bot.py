@@ -1,13 +1,6 @@
 
-# ---------------- PYTHON 3.14 FIX ---------------- #
-import asyncio
-
-loop = asyncio.new_event_loop()
-asyncio.set_event_loop(loop)
-
-# ------------------------------------------------- #
-
 import os
+import asyncio
 from aiohttp import web
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -57,13 +50,13 @@ async def start_cmd(client, message):
         return
 
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("METADATA", callback_data="meta")]
+        [InlineKeyboardButton("Bot Status", callback_data="status")]
     ])
 
-    await message.reply("RENDER RENAME BOT IS WORKING", reply_markup=keyboard)
+    await message.reply("✅ RENDER RENAME BOT IS WORKING", reply_markup=keyboard)
 
 
-# ---------------- RENAME ---------------- #
+# ---------------- RENAME HANDLER ---------------- #
 
 @bot.on_message(filters.document | filters.video | filters.audio)
 async def rename_file(client, message):
@@ -89,9 +82,9 @@ async def rename_file(client, message):
 # ---------------- WEB SERVER (PORT 8080) ---------------- #
 
 async def handle(request):
-    return web.Response(text="Bot is running!")
+    return web.Response(text="Bot is running successfully!")
 
-async def start_web():
+async def start_web_server():
     app = web.Application()
     app.router.add_get("/", handle)
 
@@ -111,7 +104,7 @@ async def start_web():
 async def main():
     await bot.start()
     print("Telegram Bot Started")
-    await start_web()
+    await start_web_server()
     await asyncio.Event().wait()
 
 
