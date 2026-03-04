@@ -8,7 +8,7 @@ cur.execute("""CREATE TABLE IF NOT EXISTS users(
     caption TEXT,
     thumb TEXT,
     media TEXT DEFAULT 'document',
-    metadata TEXT
+    metadata TEXT DEFAULT '{}'
 )""")
 conn.commit()
 
@@ -34,8 +34,8 @@ def get_thumb(uid):
     data = cur.fetchone()
     return data[0] if data and data[0] else None
 
-def set_media(uid, m):
-    cur.execute("UPDATE users SET media=? WHERE user_id=?", (m, uid))
+def set_media(uid, mode):
+    cur.execute("UPDATE users SET media=? WHERE user_id=?", (mode, uid))
     conn.commit()
 
 def get_media(uid):
@@ -50,4 +50,4 @@ def set_metadata(uid, meta):
 def get_metadata(uid):
     cur.execute("SELECT metadata FROM users WHERE user_id=?", (uid,))
     data = cur.fetchone()
-    return data[0] if data and data[0] else None
+    return data[0] if data else "{}"
