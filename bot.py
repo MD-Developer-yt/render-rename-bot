@@ -137,7 +137,7 @@ async def callbacks(client, query):
                 "👨‍💻 Developer : @Mr_Mohammed_29\n"
                 "📢 Updates : @Anime_UpdatesAU\n"
                 "💬 Support : @AU_Bot_Discussion\n"
-                "📊 Build Version : @BotsServerDead""
+                "📊 Build Version : @BotsServerDead"
             ),
             reply_markup=InlineKeyboardMarkup(
                 [[InlineKeyboardButton("🔙 Back", callback_data="back")]]
