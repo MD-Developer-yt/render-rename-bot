@@ -1,3 +1,4 @@
 pyrogram==2.0.106
-tgcrypto==1.2.4
-aiohttp==3.8.5
+tgcrypto==1.4.2
+fastapi==0.109.0
+uvicorn[standard]==0.22.1
