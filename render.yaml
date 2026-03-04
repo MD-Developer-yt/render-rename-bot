@@ -1,18 +1,6 @@
 services:
   - type: web
     name: render-rename-bot
-    env: python
+    env: docker
     plan: free
-    buildCommand: pip install -r requirements.txt
-    startCommand: python3 bot.py
-    envVars:
-      - key: API_ID
-        value: "23639272"
-      - key: API_HASH
-        value: "7d8f5d583048878a83071c5f267b059b"
-      - key: BOT_TOKEN
-        value: "8345257530:AAFrl1ZjPy8gBvuJXVLedVPkUMksZjN6nik"
-      - key: OWNER_ID
-        value: "7284759394"
-      - key: PORT
-        value: "8080"
+    autoDeploy: true
