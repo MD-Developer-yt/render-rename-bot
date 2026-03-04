@@ -1,13 +1,12 @@
-from fastapi import FastAPI
-import uvicorn
+from flask import Flask
 import os
 
-app = FastAPI()
+app = Flask(__name__)
 
-@app.get("/")
+@app.route("/")
 def home():
-    return {"status": "Bot is running"}
+    return "Bot is alive with Docker + FFmpeg"
 
-def start_web():
+def run():
     port = int(os.environ.get("PORT", 8080))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=port)
