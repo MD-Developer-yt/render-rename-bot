@@ -1,106 +1,149 @@
 import sqlite3
-import json
 import os
+import json
 
-DB_FILE = "botdata.db"
+DB_NAME = "bot.db"
 
-# Ensure DB exists
-conn = sqlite3.connect(DB_FILE, check_same_thread=False)
-cursor = conn.cursor()
-
-# ---------------- CREATE TABLE ---------------- #
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS users(
-    user_id INTEGER PRIMARY KEY,
-    caption TEXT,
-    thumb TEXT,
-    media TEXT,
-    metadata TEXT,
-    prefix TEXT,
-    suffix TEXT
-)
-""")
-conn.commit()
-
-# ---------------- USERS ---------------- #
-def add_user(user_id):
-    cursor.execute("INSERT OR IGNORE INTO users(user_id) VALUES(?)", (user_id,))
+# ---------------- INIT ----------------
+def init_db():
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS users(
+            id INTEGER PRIMARY KEY,
+            caption TEXT,
+            thumb TEXT,
+            media TEXT DEFAULT 'document',
+            metadata TEXT
+        )
+    """)
     conn.commit()
+    conn.close()
+
+init_db()
+
+# ---------------- USERS ----------------
+def add_user(user_id):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("INSERT OR IGNORE INTO users (id) VALUES (?)", (user_id,))
+    conn.commit()
+    conn.close()
 
 def get_users():
-    cursor.execute("SELECT user_id FROM users")
-    return [row[0] for row in cursor.fetchall()]
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("SELECT id FROM users")
+    users = [row[0] for row in c.fetchall()]
+    conn.close()
+    return users
 
 def total_users():
-    cursor.execute("SELECT COUNT(*) FROM users")
-    return cursor.fetchone()[0]
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("SELECT COUNT(*) FROM users")
+    count = c.fetchone()[0]
+    conn.close()
+    return count
 
-# ---------------- CAPTION ---------------- #
-def set_caption(user_id, caption):
-    cursor.execute("UPDATE users SET caption=? WHERE user_id=?", (caption, user_id))
+# ---------------- CAPTION ----------------
+def set_caption(user_id, text):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("UPDATE users SET caption=? WHERE id=?", (text, user_id))
     conn.commit()
+    conn.close()
 
 def get_caption(user_id):
-    cursor.execute("SELECT caption FROM users WHERE user_id=?", (user_id,))
-    row = cursor.fetchone()
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("SELECT caption FROM users WHERE id=?", (user_id,))
+    row = c.fetchone()
+    conn.close()
     return row[0] if row else None
 
-# ---------------- THUMBNAIL ---------------- #
-def set_thumb(user_id, path):
-    cursor.execute("UPDATE users SET thumb=? WHERE user_id=?", (path, user_id))
+def delete_caption(user_id):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("UPDATE users SET caption=NULL WHERE id=?", (user_id,))
     conn.commit()
+    conn.close()
+
+# ---------------- THUMBNAIL ----------------
+def set_thumb(user_id, path):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("UPDATE users SET thumb=? WHERE id=?", (path, user_id))
+    conn.commit()
+    conn.close()
 
 def get_thumb(user_id):
-    cursor.execute("SELECT thumb FROM users WHERE user_id=?", (user_id,))
-    row = cursor.fetchone()
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("SELECT thumb FROM users WHERE id=?", (user_id,))
+    row = c.fetchone()
+    conn.close()
     return row[0] if row else None
 
-# ---------------- MEDIA ---------------- #
-def set_media(user_id, media):
-    cursor.execute("UPDATE users SET media=? WHERE user_id=?", (media, user_id))
+def delete_thumb(user_id):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("UPDATE users SET thumb=NULL WHERE id=?", (user_id,))
     conn.commit()
+    conn.close()
+
+# ---------------- MEDIA ----------------
+def set_media(user_id, mode):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("UPDATE users SET media=? WHERE id=?", (mode, user_id))
+    conn.commit()
+    conn.close()
 
 def get_media(user_id):
-    cursor.execute("SELECT media FROM users WHERE user_id=?", (user_id,))
-    row = cursor.fetchone()
-    return row[0] if row else None
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("SELECT media FROM users WHERE id=?", (user_id,))
+    row = c.fetchone()
+    conn.close()
+    return row[0] if row else "document"
 
-# ---------------- METADATA ---------------- #
+# ---------------- METADATA ----------------
 def set_metadata(user_id, metadata: dict):
-    data = json.dumps(metadata)
-    cursor.execute("UPDATE users SET metadata=? WHERE user_id=?", (data, user_id))
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    metadata_json = json.dumps(metadata)
+    c.execute("UPDATE users SET metadata=? WHERE id=?", (metadata_json, user_id))
     conn.commit()
+    conn.close()
 
 def get_metadata(user_id):
-    cursor.execute("SELECT metadata FROM users WHERE user_id=?", (user_id,))
-    row = cursor.fetchone()
-    return json.loads(row[0]) if row and row[0] else None
-
-def set_metadata_status(user_id, status: bool):
-    md = get_metadata(user_id) or {}
-    md['status'] = status
-    set_metadata(user_id, md)
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("SELECT metadata FROM users WHERE id=?", (user_id,))
+    row = c.fetchone()
+    conn.close()
+    if row and row[0]:
+        return json.loads(row[0])
+    return None
 
 def get_metadata_status(user_id):
-    md = get_metadata(user_id)
-    return md.get("status", False) if md else False
+    return get_metadata(user_id) is not None
 
-# ---------------- PREFIX ---------------- #
-def set_prefix(user_id, text):
-    cursor.execute("UPDATE users SET prefix=? WHERE user_id=?", (text, user_id))
-    conn.commit()
-
-def get_prefix(user_id):
-    cursor.execute("SELECT prefix FROM users WHERE user_id=?", (user_id,))
-    row = cursor.fetchone()
-    return row[0] if row else None
-
-# ---------------- SUFFIX ---------------- #
-def set_suffix(user_id, text):
-    cursor.execute("UPDATE users SET suffix=? WHERE user_id=?", (text, user_id))
-    conn.commit()
-
-def get_suffix(user_id):
-    cursor.execute("SELECT suffix FROM users WHERE user_id=?", (user_id,))
-    row = cursor.fetchone()
-    return row[0] if row else None
+def set_metadata_status(user_id, status: bool):
+    if not status:
+        conn = sqlite3.connect(DB_NAME)
+        c = conn.cursor()
+        c.execute("UPDATE users SET metadata=NULL WHERE id=?", (user_id,))
+        conn.commit()
+        conn.close()
+    else:
+        # default metadata
+        set_metadata(user_id, {
+            "title": "@Anime_UpdatesAU",
+            "author": "@Anime_UpdatesAU",
+            "artist": "@Anime_UpdatesAU",
+            "audio": "@Anime_UpdatesAU",
+            "video": "@Anime_UpdatesAU",
+            "subtitle": "@Anime_UpdatesAU"
+        })
