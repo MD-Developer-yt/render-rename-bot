@@ -24,40 +24,98 @@ bot = Client(
 MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024  # 2GB
 
 # ---------------- PROGRESS ---------------- #
-progress_cache = {}
 
-async def progress(current, total, message, start):
-    now = time.time()
+@bot.on_message(filters.private & (filters.document | filters.video | filters.audio))
+async def file_handler(client, message):
 
-    if message.id in progress_cache:
-        if now - progress_cache[message.id] < 2:
-            return
+    user_id = message.from_user.id
+    media = message.document or message.video or message.audio
 
-    progress_cache[message.id] = now
+    if not media:
+        return
 
-    diff = now - start
-    percentage = current * 100 / total
-    speed = current / diff if diff > 0 else 0
-    eta = int((total - current) / speed) if speed > 0 else 0
+    start = time.time()
+    msg = await message.reply_text("📥 Downloading file...")
 
-    bar_length = 20
-    filled = int(bar_length * current / total)
-
-    bar = "⬢" * filled + "⬡" * (bar_length - filled)
-
-    text = (
-        f"{bar}\n\n"
-        f"⚡ **Progress:** {percentage:.2f}%\n"
-        f"📦 **Done:** {current / (1024*1024):.2f} MB / {total / (1024*1024):.2f} MB\n"
-        f"🚀 **Speed:** {speed / (1024*1024):.2f} MB/s\n"
-        f"⏳ **ETA:** {eta//60:02d}:{eta%60:02d}"
+    file_path = await message.download(
+        progress=progress,
+        progress_args=(msg, start)
     )
 
-    try:
-        await message.edit(text)
-    except:
-        pass
-# ---------------- START BUTTONS ---------------- #
+    await msg.edit("⚙ Processing file...")
+
+    filename = os.path.basename(file_path)
+    new_name = "AU_" + filename
+    new_path = os.path.join(os.path.dirname(file_path), new_name)
+
+    os.rename(file_path, new_path)
+
+    meta_title = "@Anime_UpdatesAU"
+    meta_author = "@Anime_UpdatesAU"
+    meta_artist = "@Anime_UpdatesAU"
+    meta_audio = "@Anime_UpdatesAU"
+    meta_video = "@Anime_UpdatesAU"
+    meta_sub = "@Anime_UpdatesAU"
+
+    output = "metadata_" + new_name
+
+    cmd = [
+        "ffmpeg",
+        "-i", new_path,
+        "-map", "0",
+        "-c", "copy",
+        "-metadata", f"title={meta_title}",
+        "-metadata", f"author={meta_author}",
+        "-metadata", f"artist={meta_artist}",
+        "-metadata", f"audio={meta_audio}",
+        "-metadata", f"video={meta_video}",
+        "-metadata", f"subtitle={meta_sub}",
+        output
+    ]
+
+    subprocess.run(cmd)
+
+    caption = db.get_caption(user_id)
+    thumb = db.get_thumbnail(user_id)
+    media_mode = db.get_media(user_id)
+
+    await msg.edit("📤 Uploading file...")
+
+    start = time.time()
+
+    if media_mode == "video":
+        await client.send_video(
+            chat_id=user_id,
+            video=output,
+            caption=caption,
+            thumb=thumb,
+            progress=progress,
+            progress_args=(msg, start)
+        )
+
+    elif media_mode == "audio":
+        await client.send_audio(
+            chat_id=user_id,
+            audio=output,
+            caption=caption,
+            progress=progress,
+            progress_args=(msg, start)
+        )
+
+    else:
+        await client.send_document(
+            chat_id=user_id,
+            document=output,
+            caption=caption,
+            thumb=thumb,
+            progress=progress,
+            progress_args=(msg, start)
+        )
+
+    os.remove(new_path)
+    os.remove(output)
+
+    await msg.delete()# ---------------- START BUTTONS ---------------- #
 def start_buttons():
     return InlineKeyboardMarkup([
         [
