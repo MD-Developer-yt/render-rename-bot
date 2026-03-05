@@ -21,7 +21,7 @@ bot = Client(
 MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024
 
 
-# ---------------- PROGRESS ---------------- #
+# ---------------- PROGRESS BAR ---------------- #
 
 progress_cache = {}
 
@@ -47,7 +47,7 @@ async def progress(current, total, message, start):
         f"{bar}\n\n"
         f"📊 {percent:.1f}%\n"
         f"🚀 {speed/1024/1024:.2f} MB/s\n"
-        f"⏳ ETA: {eta//60:02d}:{eta%60:02d}"
+        f"⏳ ETA {eta//60:02d}:{eta%60:02d}"
     )
 
     try:
@@ -59,6 +59,7 @@ async def progress(current, total, message, start):
 # ---------------- START BUTTONS ---------------- #
 
 def start_buttons():
+
     return InlineKeyboardMarkup([
         [
             InlineKeyboardButton("📢 Updates", url="https://t.me/Anime_UpdatesAU"),
@@ -69,7 +70,7 @@ def start_buttons():
             InlineKeyboardButton("ℹ About", callback_data="about")
         ],
         [
-            InlineKeyboardButton("🏷 Metadata", callback_data="meta_menu")
+            InlineKeyboardButton("🏷 Metadata", callback_data="meta")
         ]
     ])
 
@@ -87,82 +88,113 @@ async def start(client, message):
                  "🤖 Wᴇʟᴄᴏᴍᴇ Tᴏ AU Rᴇɴᴅᴇʀ Rᴇɴᴀᴍᴇ Bᴏᴛ\n\n"
                  "• Tʜɪs Is Aɴ Aᴅᴠᴀɴᴄᴇᴅ Aɴᴅ Yᴇᴛ Pᴏᴡᴇʀꜰᴜʟ ɪʟʟᴇɢᴀʟ Rᴇɴᴀᴍᴇ Bᴏᴛ.\n"
                  "• Usɪɴɢ Tʜɪs Bᴏᴛ Yᴏᴜ Cᴀɴ Rᴇɴᴀᴍᴇ & Cʜᴀɴɢᴇ Tʜᴜᴍʙɴᴀɪʟ Oꜰ Yᴏᴜʀ Fɪʟᴇ.\n"
-                 "• Yᴏᴜ Cᴀɴ Aʟsᴏ Cᴏɴᴠᴇʀᴛ Vɪᴅᴇᴏ Tᴏ Fɪʟᴇ & Fɪʟᴇ Tᴏ Vɪᴅᴇᴏ.\n\n"
+                  "• Yᴏᴜ Cᴀɴ Aʟsᴏ Cᴏɴᴠᴇʀᴛ Vɪᴅᴇᴏ Tᴏ Fɪʟᴇ & Fɪʟᴇ Tᴏ Vɪᴅᴇᴏ.\n\n"
                  "Tʜɪs Bᴏᴛ Wᴀs Cʀᴇᴀᴛᴇᴅ Bʏ :@Mr_Mohammed_29\n",
         reply_markup=start_buttons()
     )
 
 
-# ---------------- HELP ---------------- #
+# ---------------- HELP COMMAND ---------------- #
 
-HELP_TEXT = """
-📖 Help Menu
+@bot.on_message(filters.command("help") & filters.private)
+async def help_command(client, message):
 
-/setcaption - Set custom caption
+    text = """
+📖 **Bot Help**
+
+/setcaption - Set caption
 /setthumbnail - Reply to photo
 /setmedia video|document|audio
 /metadata - Toggle metadata
+
+Send any file to start renaming.
 """
 
+    await message.reply_text(text)
 
-# ---------------- ABOUT ---------------- #
 
-ABOUT_TEXT = """
-"🤖 Bot: **AU Render Rename Bot**\n"
-"📕 Library : Pyrogram\n"
-"✏️ Language : Python 3\n"
-"💾 Database : Mongo DB\n"
-"👨‍💻 Developer : @Mr_Mohammed_29\n"
-"📢 Updates : @Anime_UpdatesAU\n"
-"💬 Support : @AU_Bot_Discussion\n"
-"📊 Build Version : @BotsServerDead"
+# ---------------- ABOUT COMMAND ---------------- #
+
+@bot.on_message(filters.command("about") & filters.private)
+async def about_command(client, message):
+
+    text = """
+🤖 Bot: **AU Render Rename Bot**\n
+📕 Library : Pyrogram\n
+✏️ Language : Python 3\n
+💾 Database : Mongo DB\n
+👨‍💻 Developer : @Mr_Mohammed_29\n
+📢 Updates : @Anime_UpdatesAU\n
+💬 Support : @AU_Bot_Discussion\n
+📊 Build Version : @BotsServerDead
 """
+
+    await message.reply_text(text)
 
 
 # ---------------- METADATA COMMAND ---------------- #
 
 @bot.on_message(filters.command("metadata") & filters.private)
-async def metadata_cmd(client, message):
+async def metadata_command(client, message):
 
     status = db.get_metadata_status(message.from_user.id)
 
+    text = f"Metadata is {'✅ ON' if status else '❌ OFF'}"
+
     await message.reply_text(
-        f"Metadata is {'✅ ON' if status else '❌ OFF'}",
+        text,
         reply_markup=InlineKeyboardMarkup([
             [
-                InlineKeyboardButton("✅ ON", callback_data="meta_on"),
-                InlineKeyboardButton("❌ OFF", callback_data="meta_off")
+                InlineKeyboardButton("ON", callback_data="meta_on"),
+                InlineKeyboardButton("OFF", callback_data="meta_off")
             ]
         ])
     )
 
 
-# ---------------- CALLBACK ---------------- #
+# ---------------- CALLBACK BUTTONS ---------------- #
 
 @bot.on_callback_query()
 async def callbacks(client, query):
 
     uid = query.from_user.id
+    data = query.data
 
-    if query.data == "help":
+    if data == "help":
 
         await query.message.edit_caption(
-            caption=HELP_TEXT,
+            caption="""
+📖 **Bot Help**
+
+/setcaption - Set caption
+/setthumbnail - Reply photo
+/setmedia video|document|audio
+/metadata - Toggle metadata
+""",
             reply_markup=InlineKeyboardMarkup(
                 [[InlineKeyboardButton("🔙 Back", callback_data="back")]]
             )
         )
 
-    elif query.data == "about":
+    elif data == "about":
 
         await query.message.edit_caption(
-            caption=ABOUT_TEXT,
+            caption="""
+🤖 Bot: **AU Render Rename Bot**\n
+📕 Library : Pyrogram\n
+✏️ Language : Python 3\n
+💾 Database : Mongo DB\n"
+👨‍💻 Developer : @Mr_Mohammed_29\n
+📢 Updates : @Anime_UpdatesAU\n
+💬 Support : @AU_Bot_Discussion\n
+📊 Build Version : @BotsServerDead
+""",
             reply_markup=InlineKeyboardMarkup(
                 [[InlineKeyboardButton("🔙 Back", callback_data="back")]]
             )
         )
 
-    elif query.data == "meta_menu":
+    elif data == "meta":
 
         status = db.get_metadata_status(uid)
 
@@ -170,8 +202,8 @@ async def callbacks(client, query):
             caption=f"Metadata is {'✅ ON' if status else '❌ OFF'}",
             reply_markup=InlineKeyboardMarkup([
                 [
-                    InlineKeyboardButton("✅ ON", callback_data="meta_on"),
-                    InlineKeyboardButton("❌ OFF", callback_data="meta_off")
+                    InlineKeyboardButton("ON", callback_data="meta_on"),
+                    InlineKeyboardButton("OFF", callback_data="meta_off")
                 ],
                 [
                     InlineKeyboardButton("🔙 Back", callback_data="back")
@@ -179,20 +211,20 @@ async def callbacks(client, query):
             ])
         )
 
-    elif query.data == "meta_on":
+    elif data == "meta_on":
 
         db.set_metadata_status(uid, True)
         await query.answer("Metadata Enabled")
 
-    elif query.data == "meta_off":
+    elif data == "meta_off":
 
         db.set_metadata_status(uid, False)
         await query.answer("Metadata Disabled")
 
-    elif query.data == "back":
+    elif data == "back":
 
         await query.message.edit_caption(
-            caption="👋 Welcome!\nSend file to rename.",
+            caption="👋 Welcome Back!\nSend file to rename.",
             reply_markup=start_buttons()
         )
 
@@ -205,7 +237,7 @@ async def set_caption(client, message):
     parts = message.text.split(maxsplit=1)
 
     if len(parts) < 2:
-        return await message.reply("Send caption text.")
+        return await message.reply("Send caption text")
 
     db.set_caption(message.from_user.id, parts[1])
 
@@ -236,7 +268,7 @@ async def set_media(client, message):
     if len(parts) < 2:
         return await message.reply("Use video/document/audio")
 
-    mode = parts[1].lower()
+  mode = parts[1].lower()
 
     if mode in ["video", "document", "audio"]:
 
@@ -252,31 +284,25 @@ async def set_media(client, message):
 # ---------------- FILE HANDLER ---------------- #
 
 @bot.on_message(filters.video | filters.document | filters.audio)
-async def handle_file(client, message):
+async def file_handler(client, message):
 
     media = message.video or message.document or message.audio
 
     if media.file_size > MAX_FILE_SIZE:
-        return await message.reply("File exceeds 2GB.")
+        return await message.reply("File exceeds 2GB")
 
     uid = message.from_user.id
 
     caption = db.get_caption(uid)
-
     thumb = db.get_thumb(uid)
-
     mode = db.get_media(uid)
-
-    meta_status = db.get_metadata_status(uid)
+    meta = db.get_metadata_status(uid)
 
     status = await message.reply("Downloading...")
 
     start = time.time()
 
-    file_path = await message.download(
-        progress=progress,
-        progress_args=(status, start)
-    )
+    file_path = await message.download(progress=progress, progress_args=(status, start))
 
     renamed = "renamed_" + os.path.basename(file_path)
 
@@ -284,21 +310,21 @@ async def handle_file(client, message):
 
     output = renamed
 
-    if meta_status:
+    if meta:
 
         output = "meta_" + renamed
 
         cmd = [
-            "ffmpeg", "-y",
-            "-i", renamed,
-            "-map", "0",
-            "-c", "copy",
-            "-metadata", "title=@Anime_UpdatesAU",
-            "-metadata", "author=@Anime_UpdatesAU",
-            "-metadata", "artist=@Anime_UpdatesAU",
-            "-metadata", "audio=@Anime_UpdatesAU",
-            "-metadata", "video=@Anime_UpdatesAU",
-            "-metadata", "subtitle=@Anime_UpdatesAU",
+            "ffmpeg","-y",
+            "-i",renamed,
+            "-map","0",
+            "-c","copy",
+            "-metadata","title=@Anime_UpdatesAU",
+            "-metadata","author=@Anime_UpdatesAU",
+            "-metadata","artist=@Anime_UpdatesAU",
+            "-metadata","audio=@Anime_UpdatesAU",
+            "-metadata","video=@Anime_UpdatesAU",
+            "-metadata","subtitle=@Anime_UpdatesAU",
             output
         ]
 
@@ -310,31 +336,37 @@ async def handle_file(client, message):
 
     start = time.time()
 
-    send_args = dict(
-        chat_id=message.chat.id,
-        caption=caption,
-        thumb=thumb,
-        progress=progress,
-        progress_args=(status, start)
-    )
-
     if mode == "video":
 
-        send_args["video"] = output
-
-        await client.send_video(**send_args)
+        await client.send_video(
+            message.chat.id,
+            video=output,
+            caption=caption,
+            thumb=thumb,
+            progress=progress,
+            progress_args=(status,start)
+        )
 
     elif mode == "audio":
 
-        send_args["audio"] = output
-
-        await client.send_audio(**send_args)
+        await client.send_audio(
+            message.chat.id,
+            audio=output,
+            caption=caption,
+            progress=progress,
+            progress_args=(status,start)
+        )
 
     else:
 
-        send_args["document"] = output
-
-        await client.send_document(**send_args)
+        await client.send_document(
+            message.chat.id,
+            document=output,
+            caption=caption,
+            thumb=thumb,
+            progress=progress,
+            progress_args=(status,start)
+        )
 
     os.remove(output)
 
@@ -349,4 +381,9 @@ if __name__ == "__main__":
 
     threading.Thread(target=run).start()
 
-    bot.run()
+    bot.run()       
+
+#Don't Remove Credits 
+#Supports Group @AU_Bot_Discussion 
+#Telegram Channel @Anime_UpdatesAU
+#Developer @Mr_Mohammed_29
