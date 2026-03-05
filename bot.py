@@ -196,53 +196,88 @@ async def broadcast_cmd(client, message):
     await message.reply_text(f"✅ Broadcast Done\nSuccess: {success}\nFailed: {fail}")
 
 # ---------------- FILE HANDLER ---------------- #
-@bot.on_message(filters.document | filters.video | filters.audio)
+
+@bot.on_message(filters.private & (filters.document | filters.video | filters.audio))
 async def file_handler(client, message):
+
+    user_id = message.from_user.id
+
     media = message.document or message.video or message.audio
-    if media.file_size > MAX_FILE_SIZE:
-        return await message.reply("File exceeds 2GB")
 
-    uid = message.from_user.id
-    caption = db.get_caption(uid)
-    thumb = db.get_thumb(uid)
-    mode = db.get_media(uid)
-    meta = db.get_metadata_status(uid)
+    if not media:
+        return
 
-    status = await message.reply("Downloading...")
-    start = time.time()
-    file_path = await message.download(progress=progress, progress_args=(status, start))
+    msg = await message.reply_text("📥 Downloading file...")
 
-    renamed = "AU_" + os.path.basename(file_path)
-    os.rename(file_path, renamed)
-    output = renamed
+    file_path = await message.download()
 
-    if meta:
-        output = "meta_" + renamed
-        cmd = [
-            "ffmpeg", "-y", "-i", renamed, "-map", "0", "-c", "copy",
-            "-metadata", "title=@Anime_UpdatesAU",
-            "-metadata", "author=@Anime_UpdatesAU",
-            "-metadata", "artist=@Anime_UpdatesAU",
-            "-metadata", "audio=@Anime_UpdatesAU",
-            "-metadata", "video=@Anime_UpdatesAU",
-            "-metadata", "subtitle=@Anime_UpdatesAU",
-            output
-        ]
-        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        os.remove(renamed)
+    await msg.edit("⚙ Processing file...")
 
-    await status.edit("Uploading...")
-    start = time.time()
-    if mode == "video":
-        await client.send_video(message.chat.id, video=output, caption=caption, thumb=thumb, progress=progress, progress_args=(status,start))
-    elif mode == "audio":
-        await client.send_audio(message.chat.id, audio=output, caption=caption, progress=progress, progress_args=(status,start))
+    filename = os.path.basename(file_path)
+    new_name = "AU_" + filename
+    new_path = os.path.join(os.path.dirname(file_path), new_name)
+
+    os.rename(file_path, new_path)
+
+    # Metadata settings
+    meta_title = "@Anime_UpdatesAU"
+    meta_author = "@Anime_UpdatesAU"
+    meta_artist = "@Anime_UpdatesAU"
+    meta_audio = "@Anime_UpdatesAU"
+    meta_video = "@Anime_UpdatesAU"
+    meta_sub = "@Anime_UpdatesAU"
+
+    output = "metadata_" + new_name
+
+    cmd = [
+        "ffmpeg",
+        "-i", new_path,
+        "-map", "0",
+        "-c", "copy",
+        "-metadata", f"title={meta_title}",
+        "-metadata", f"author={meta_author}",
+        "-metadata", f"artist={meta_artist}",
+        "-metadata", f"audio={meta_audio}",
+        "-metadata", f"video={meta_video}",
+        "-metadata", f"subtitle={meta_sub}",
+        output
+    ]
+
+    subprocess.run(cmd)
+
+    caption = db.get_caption(user_id)
+    thumb = db.get_thumbnail(user_id)
+    media_mode = db.get_media(user_id)
+
+    await msg.edit("📤 Uploading file...")
+
+    if media_mode == "video":
+        await client.send_video(
+            chat_id=user_id,
+            video=output,
+            caption=caption,
+            thumb=thumb
+        )
+
+    elif media_mode == "audio":
+        await client.send_audio(
+            chat_id=user_id,
+            audio=output,
+            caption=caption
+        )
+
     else:
-        await client.send_document(message.chat.id, document=output, caption=caption, thumb=thumb, progress=progress, progress_args=(status,start))
+        await client.send_document(
+            chat_id=user_id,
+            document=output,
+            caption=caption,
+            thumb=thumb
+        )
 
+    os.remove(new_path)
     os.remove(output)
-    await status.delete()
 
+    await msg.delete()
 # ---------------- RUN BOT ---------------- #
 if __name__ == "__main__":
     threading.Thread(target=run).start()  # Start web.py for Render keep-alive
