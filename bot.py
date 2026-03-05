@@ -15,20 +15,20 @@ bot = Client(
     api_id=API_ID,
     api_hash=API_HASH,
     bot_token=BOT_TOKEN,
-    workers=50  # Increased workers for better speed
+    workers=50
 )
 
 MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024  # 2GB
 
 
-# ---------------- THROTTLED PROGRESS ----------------
+# ---------------- PROGRESS (Optimized) ----------------
 progress_cache = {}
 
 async def progress(current, total, message, start):
     now = time.time()
 
     if message.id in progress_cache:
-        if now - progress_cache[message.id] < 2:  # update every 2 sec
+        if now - progress_cache[message.id] < 2:
             return
 
     progress_cache[message.id] = now
@@ -54,7 +54,7 @@ async def progress(current, total, message, start):
         pass
 
 
-# ---------------- START MENU ----------------
+# ---------------- START BUTTONS ----------------
 def start_buttons():
     return InlineKeyboardMarkup([
         [
@@ -71,6 +71,7 @@ def start_buttons():
     ])
 
 
+# ---------------- START ----------------
 @bot.on_message(filters.command("start") & filters.private)
 async def start(client, message):
     db.add_user(message.from_user.id)
@@ -78,16 +79,44 @@ async def start(client, message):
     await message.reply_photo(
         photo="https://graph.org/file/0e77ba48a8b7a3b09296f-362372bee0d84fd217.jpg",
         caption=f"👋 Hᴇʟʟᴏ {message.from_user.first_name}!\n"
-            "🤖 Wᴇʟᴄᴏᴍᴇ Tᴏ AU Rᴇɴᴅᴇʀ Rᴇɴᴀᴍᴇ Bᴏᴛ\n\n"
-            "• Tʜɪs Is Aɴ Aᴅᴠᴀɴᴄᴇᴅ Aɴᴅ Yᴇᴛ Pᴏᴡᴇʀꜰᴜʟ ɪʟʟᴇɢᴀʟ Rᴇɴᴀᴍᴇ Bᴏᴛ.\n"
-            "• Usɪɴɢ Tʜɪs Bᴏᴛ Yᴏᴜ Cᴀɴ Rᴇɴᴀᴍᴇ & Cʜᴀɴɢᴇ Tʜᴜᴍʙɴᴀɪʟ Oꜰ Yᴏᴜʀ Fɪʟᴇ.\n"
-            "• Yᴏᴜ Cᴀɴ Aʟsᴏ Cᴏɴᴠᴇʀᴛ Vɪᴅᴇᴏ Tᴏ Fɪʟᴇ & Fɪʟᴇ Tᴏ Vɪᴅᴇᴏ.\n\n"
-            "ʜɪs Bᴏᴛ Wᴀs Cʀᴇᴀᴛᴇᴅ Bʏ :@Mr_Mohammed_29\n",
+                 "🤖 Wᴇʟᴄᴏᴍᴇ Tᴏ AU Rᴇɴᴅᴇʀ Rᴇɴᴀᴍᴇ Bᴏᴛ\n\n"
+                 "• Tʜɪs Is Aɴ Aᴅᴠᴀɴᴄᴇᴅ Aɴᴅ Yᴇᴛ Pᴏᴡᴇʀꜰᴜʟ ɪʟʟᴇɢᴀʟ Rᴇɴᴀᴍᴇ Bᴏᴛ.\n"
+                 "• Usɪɴɢ Tʜɪs Bᴏᴛ Yᴏᴜ Cᴀɴ Rᴇɴᴀᴍᴇ & Cʜᴀɴɢᴇ Tʜᴜᴍʙɴᴀɪʟ Oꜰ Yᴏᴜʀ Fɪʟᴇ.\n"
+                 "• Yᴏᴜ Cᴀɴ Aʟsᴏ Cᴏɴᴠᴇʀᴛ Vɪᴅᴇᴏ Tᴏ Fɪʟᴇ & Fɪʟᴇ Tᴏ Vɪᴅᴇᴏ.\n\n"
+                 "Tʜɪs Bᴏᴛ Wᴀs Cʀᴇᴀᴛᴇᴅ Bʏ :@Mr_Mohammed_29\n"",
         reply_markup=start_buttons()
     )
 
 
-# ---------------- METADATA MENU ----------------
+# ---------------- HELP COMMAND ----------------
+@bot.on_message(filters.command("help") & filters.private)
+async def help_cmd(client, message):
+    await message.reply_text(
+        "📖 Help Menu\n\n"
+        "/setcaption - Set caption\n"
+        "/setthumbnail - Reply photo\n"
+        "/setmedia video|document|audio\n"
+        "/metadata - Toggle metadata"
+    )
+
+
+# ---------------- METADATA COMMAND ----------------
+@bot.on_message(filters.command("metadata") & filters.private)
+async def metadata_cmd(client, message):
+    status = db.get_metadata_status(message.from_user.id)
+
+    await message.reply_text(
+        f"Metadata is {'✅ ON' if status else '❌ OFF'}",
+        reply_markup=InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton("✅ ON", callback_data="meta_on"),
+                InlineKeyboardButton("❌ OFF", callback_data="meta_off")
+            ]
+        ])
+    )
+
+
+# ---------------- CALLBACK HANDLER ----------------
 @bot.on_callback_query()
 async def callbacks(client, query):
 
@@ -95,6 +124,7 @@ async def callbacks(client, query):
 
     if query.data == "meta_menu":
         status = db.get_metadata_status(uid)
+
         await query.message.edit_caption(
             caption=f"Metadata is {'✅ ON' if status else '❌ OFF'}",
             reply_markup=InlineKeyboardMarkup([
@@ -116,12 +146,11 @@ async def callbacks(client, query):
 
     elif query.data == "help":
         await query.message.edit_caption(
-            caption=(
-                "/setcaption - Set caption\n"
-                "/setthumbnail - Reply photo\n"
-                "/setmedia video|document|audio\n"
-                "/metadata - Toggle metadata"
-            ),
+            caption="📖 Help Menu\n\n"
+                    "/setcaption - Set caption\n"
+                    "/setthumbnail - Reply photo\n"
+                    "/setmedia video|document|audio\n"
+                    "/metadata - Toggle metadata",
             reply_markup=InlineKeyboardMarkup(
                 [[InlineKeyboardButton("🔙 Back", callback_data="back")]]
             )
@@ -129,16 +158,14 @@ async def callbacks(client, query):
 
     elif query.data == "about":
         await query.message.edit_caption(
-            caption=(
-                "🤖 Bot: **AU Render Rename Bot**\n"
-                "📕 Library : Pyrogram\n"
-                "✏️ Language : Python 3\n"
-                "💾 Database : Mongo DB\n"
-                "👨‍💻 Developer : @Mr_Mohammed_29\n"
-                "📢 Updates : @Anime_UpdatesAU\n"
-                "💬 Support : @AU_Bot_Discussion\n"
-                "📊 Build Version : @BotsServerDead"
-            ),
+            caption="🤖 Bot: **AU Render Rename Bot**\n"
+                    "📕 Library : Pyrogram\n"
+                    "✏️ Language : Python 3\n"
+                    "💾 Database : Mongo DB\n"
+                    "👨‍💻 Developer : @Mr_Mohammed_29\n"
+                    "📢 Updates : @Anime_UpdatesAU\n"
+                    "💬 Support : @AU_Bot_Discussion\n"
+                    "📊 Build Version : @BotsServerDead",
             reply_markup=InlineKeyboardMarkup(
                 [[InlineKeyboardButton("🔙 Back", callback_data="back")]]
             )
@@ -147,11 +174,11 @@ async def callbacks(client, query):
     elif query.data == "back":
         await query.message.edit_caption(
             caption=f"👋 Hᴇʟʟᴏ {message.from_user.first_name}!\n"
-            "🤖 Wᴇʟᴄᴏᴍᴇ Tᴏ AU Rᴇɴᴅᴇʀ Rᴇɴᴀᴍᴇ Bᴏᴛ\n\n"
-            "• Tʜɪs Is Aɴ Aᴅᴠᴀɴᴄᴇᴅ Aɴᴅ Yᴇᴛ Pᴏᴡᴇʀꜰᴜʟ ɪʟʟᴇɢᴀʟ Rᴇɴᴀᴍᴇ Bᴏᴛ.\n"
-            "• Usɪɴɢ Tʜɪs Bᴏᴛ Yᴏᴜ Cᴀɴ Rᴇɴᴀᴍᴇ & Cʜᴀɴɢᴇ Tʜᴜᴍʙɴᴀɪʟ Oꜰ Yᴏᴜʀ Fɪʟᴇ.\n"
-            "• Yᴏᴜ Cᴀɴ Aʟsᴏ Cᴏɴᴠᴇʀᴛ Vɪᴅᴇᴏ Tᴏ Fɪʟᴇ & Fɪʟᴇ Tᴏ Vɪᴅᴇᴏ.\n\n"
-            "ʜɪs Bᴏᴛ Wᴀs Cʀᴇᴀᴛᴇᴅ Bʏ :@Mr_Mohammed_29\n",
+                     "🤖 Wᴇʟᴄᴏᴍᴇ Tᴏ AU Rᴇɴᴅᴇʀ Rᴇɴᴀᴍᴇ Bᴏᴛ\n\n"
+                     "• Tʜɪs Is Aɴ Aᴅᴠᴀɴᴄᴇᴅ Aɴᴅ Yᴇᴛ Pᴏᴡᴇʀꜰᴜʟ ɪʟʟᴇɢᴀʟ Rᴇɴᴀᴍᴇ Bᴏᴛ.\n"
+                     "• Usɪɴɢ Tʜɪs Bᴏᴛ Yᴏᴜ Cᴀɴ Rᴇɴᴀᴍᴇ & Cʜᴀɴɢᴇ Tʜᴜᴍʙɴᴀɪʟ Oꜰ Yᴏᴜʀ Fɪʟᴇ.\n"
+                     "• Yᴏᴜ Cᴀɴ Aʟsᴏ Cᴏɴᴠᴇʀᴛ Vɪᴅᴇᴏ Tᴏ Fɪʟᴇ & Fɪʟᴇ Tᴏ Vɪᴅᴇᴏ.\n\n"
+                     "Tʜɪs Bᴏᴛ Wᴀs Cʀᴇᴀᴛᴇᴅ Bʏ :@Mr_Mohammed_29\n",
             reply_markup=start_buttons()
         )
 
@@ -159,10 +186,10 @@ async def callbacks(client, query):
 # ---------------- SETTINGS ----------------
 @bot.on_message(filters.command("setcaption") & filters.private)
 async def set_caption(client, message):
-    text = message.text.split(maxsplit=1)
-    if len(text) < 2:
+    parts = message.text.split(maxsplit=1)
+    if len(parts) < 2:
         return await message.reply("Provide caption text.")
-    db.set_caption(message.from_user.id, text[1])
+    db.set_caption(message.from_user.id, parts[1])
     await message.reply("Caption saved.")
 
 
@@ -213,7 +240,6 @@ async def handle_file(client, message):
 
     output = renamed
 
-    # ----- APPLY FIXED METADATA ONLY IF ON -----
     if meta_status:
         output = "meta_" + renamed
 
@@ -264,9 +290,3 @@ if __name__ == "__main__":
     from web import run
     threading.Thread(target=run).start()
     bot.run()
-
-
-# Don't Remove Credits
-# Supports Group @AU_Bot_Discussion
-# Telegram Channel @Anime_UpdatesAU
-# Developer @Mr_Mohammed_29
