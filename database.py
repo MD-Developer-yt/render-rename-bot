@@ -1,76 +1,138 @@
 import sqlite3
 
 conn = sqlite3.connect("bot.db", check_same_thread=False)
-cur = conn.cursor()
+cursor = conn.cursor()
 
-cur.execute("""
-CREATE TABLE IF NOT EXISTS users(
+# ---------------- TABLE ---------------- #
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS users (
     user_id INTEGER PRIMARY KEY,
     caption TEXT,
-    media TEXT DEFAULT 'document',
     thumb TEXT,
-    metadata TEXT DEFAULT '{}',
-    meta_status INTEGER DEFAULT 0
+    media TEXT DEFAULT 'document',
+    metadata INTEGER DEFAULT 0
 )
 """)
+
 conn.commit()
 
 
-def add_user(uid):
-    cur.execute("INSERT OR IGNORE INTO users(user_id) VALUES(?)", (uid,))
+# ---------------- ADD USER ---------------- #
+
+def add_user(user_id):
+
+    cursor.execute(
+        "INSERT OR IGNORE INTO users (user_id) VALUES (?)",
+        (user_id,)
+    )
+
     conn.commit()
 
 
-def set_caption(uid, text):
-    cur.execute("UPDATE users SET caption=? WHERE user_id=?", (text, uid))
+# ---------------- CAPTION ---------------- #
+
+def set_caption(user_id, caption):
+
+    cursor.execute(
+        "UPDATE users SET caption=? WHERE user_id=?",
+        (caption, user_id)
+    )
+
     conn.commit()
 
 
-def get_caption(uid):
-    cur.execute("SELECT caption FROM users WHERE user_id=?", (uid,))
-    r = cur.fetchone()
-    return r[0] if r else None
+def get_caption(user_id):
+
+    cursor.execute(
+        "SELECT caption FROM users WHERE user_id=?",
+        (user_id,)
+    )
+
+    data = cursor.fetchone()
+
+    if data and data[0]:
+        return data[0]
+
+    return None
 
 
-def set_media(uid, media):
-    cur.execute("UPDATE users SET media=? WHERE user_id=?", (media, uid))
+# ---------------- THUMBNAIL ---------------- #
+
+def set_thumb(user_id, path):
+
+    cursor.execute(
+        "UPDATE users SET thumb=? WHERE user_id=?",
+        (path, user_id)
+    )
+
     conn.commit()
 
 
-def get_media(uid):
-    cur.execute("SELECT media FROM users WHERE user_id=?", (uid,))
-    r = cur.fetchone()
-    return r[0] if r else "document"
+def get_thumb(user_id):
+
+    cursor.execute(
+        "SELECT thumb FROM users WHERE user_id=?",
+        (user_id,)
+    )
+
+    data = cursor.fetchone()
+
+    if data:
+        return data[0]
+
+    return None
 
 
-def set_thumb(uid, path):
-    cur.execute("UPDATE users SET thumb=? WHERE user_id=?", (path, uid))
+# ---------------- MEDIA MODE ---------------- #
+
+def set_media(user_id, mode):
+
+    cursor.execute(
+        "UPDATE users SET media=? WHERE user_id=?",
+        (mode, user_id)
+    )
+
     conn.commit()
 
 
-def get_thumb(uid):
-    cur.execute("SELECT thumb FROM users WHERE user_id=?", (uid,))
-    r = cur.fetchone()
-    return r[0] if r else None
+def get_media(user_id):
+
+    cursor.execute(
+        "SELECT media FROM users WHERE user_id=?",
+        (user_id,)
+    )
+
+    data = cursor.fetchone()
+
+    if data and data[0]:
+        return data[0]
+
+    return "document"
 
 
-def set_metadata(uid, meta):
-    cur.execute("UPDATE users SET metadata=? WHERE user_id=?", (meta, uid))
+# ---------------- METADATA ---------------- #
+
+def set_metadata_status(user_id, status):
+
+    cursor.execute(
+        "UPDATE users SET metadata=? WHERE user_id=?",
+        (1 if status else 0, user_id)
+    )
+
     conn.commit()
 
 
-def get_metadata(uid):
-    cur.execute("SELECT metadata FROM users WHERE user_id=?", (uid,))
-    r = cur.fetchone()
-    return r[0] if r else "{}"
+def get_metadata_status(user_id):
 
+    cursor.execute(
+        "SELECT metadata FROM users WHERE user_id=?",
+        (user_id,)
+    )
 
-def set_meta_status(uid, status):
-    cur.execute("UPDATE users SET meta_status=? WHERE user_id=?", (1 if status else 0, uid))
-    conn.commit()
+    data = cursor.fetchone()
 
+    if data:
+        return bool(data[0])
 
-def get_meta_status(uid):
-    cur.execute("SELECT meta_status FROM users WHERE user_id=?", (uid,))
-    r = cur.fetchone()
-    return bool(r[0]) if r else False
+    return False
