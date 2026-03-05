@@ -88,8 +88,8 @@ async def start(client, message):
                  "🤖 Wᴇʟᴄᴏᴍᴇ Tᴏ AU Rᴇɴᴅᴇʀ Rᴇɴᴀᴍᴇ Bᴏᴛ\n\n"
                  "• Tʜɪs Is Aɴ Aᴅᴠᴀɴᴄᴇᴅ Aɴᴅ Yᴇᴛ Pᴏᴡᴇʀꜰᴜʟ ɪʟʟᴇɢᴀʟ Rᴇɴᴀᴍᴇ Bᴏᴛ.\n"
                  "• Usɪɴɢ Tʜɪs Bᴏᴛ Yᴏᴜ Cᴀɴ Rᴇɴᴀᴍᴇ & Cʜᴀɴɢᴇ Tʜᴜᴍʙɴᴀɪʟ Oꜰ Yᴏᴜʀ Fɪʟᴇ.\n"
-                  "• Yᴏᴜ Cᴀɴ Aʟsᴏ Cᴏɴᴠᴇʀᴛ Vɪᴅᴇᴏ Tᴏ Fɪʟᴇ & Fɪʟᴇ Tᴏ Vɪᴅᴇᴏ.\n\n"
-                 "Tʜɪs Bᴏᴛ Wᴀs Cʀᴇᴀᴛᴇᴅ Bʏ :@Mr_Mohammed_29\n",
+                 "• Yᴏᴜ Cᴀɴ Aʟsᴏ Cᴏɴᴠᴇʀᴛ Vɪᴅᴇᴏ Tᴏ Fɪʟᴇ & Fɪʟᴇ Tᴏ Vɪᴅᴇᴏ.\n\n"
+                 "Thɪs Bᴏᴛ Wᴀs Cʀᴇᴀᴛᴇᴅ Bʏ :@Mr_Mohammed_29\n",
         reply_markup=start_buttons()
     )
 
@@ -181,10 +181,10 @@ async def callbacks(client, query):
         await query.message.edit_caption(
             caption="""
 🤖 Bot: **AU Render Rename Bot**\n
-📕 Library : Pyrogram\n
+📕 Library : Pyrogram\n"
 ✏️ Language : Python 3\n
-💾 Database : Mongo DB\n"
-👨‍💻 Developer : @Mr_Mohammed_29\n
+💾 Database : Mongo DB\n
+👨‍💻 Develeper : @Mr_Mohammed_29\n
 📢 Updates : @Anime_UpdatesAU\n
 💬 Support : @AU_Bot_Discussion\n
 📊 Build Version : @BotsServerDead
@@ -268,7 +268,7 @@ async def set_media(client, message):
     if len(parts) < 2:
         return await message.reply("Use video/document/audio")
 
-  mode = parts[1].lower()
+    mode = parts[1].lower()
 
     if mode in ["video", "document", "audio"]:
 
@@ -381,9 +381,4 @@ if __name__ == "__main__":
 
     threading.Thread(target=run).start()
 
-    bot.run()       
-
-#Don't Remove Credits 
-#Supports Group @AU_Bot_Discussion 
-#Telegram Channel @Anime_UpdatesAU
-#Developer @Mr_Mohammed_29
+    bot.run()
