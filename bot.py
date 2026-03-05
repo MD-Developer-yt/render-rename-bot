@@ -28,20 +28,35 @@ progress_cache = {}
 
 async def progress(current, total, message, start):
     now = time.time()
-    if message.id in progress_cache and now - progress_cache[message.id] < 2:
-        return
+
+    if message.id in progress_cache:
+        if now - progress_cache[message.id] < 2:
+            return
+
     progress_cache[message.id] = now
+
     diff = now - start
-    percent = current * 100 / total
+    percentage = current * 100 / total
     speed = current / diff if diff > 0 else 0
     eta = int((total - current) / speed) if speed > 0 else 0
-    bar = "⬢" * int(percent // 10) + "⬡" * (10 - int(percent // 10))
-    text = f"{bar}\n\n📊 {percent:.1f}%\n🚀 {speed/1024/1024:.2f} MB/s\n⏳ ETA {eta//60:02d}:{eta%60:02d}"
+
+    bar_length = 20
+    filled = int(bar_length * current / total)
+
+    bar = "⬢" * filled + "⬡" * (bar_length - filled)
+
+    text = (
+        f"{bar}\n\n"
+        f"⚡ **Progress:** {percentage:.2f}%\n"
+        f"📦 **Done:** {current / (1024*1024):.2f} MB / {total / (1024*1024):.2f} MB\n"
+        f"🚀 **Speed:** {speed / (1024*1024):.2f} MB/s\n"
+        f"⏳ **ETA:** {eta//60:02d}:{eta%60:02d}"
+    )
+
     try:
         await message.edit(text)
     except:
         pass
-
 # ---------------- START BUTTONS ---------------- #
 def start_buttons():
     return InlineKeyboardMarkup([
